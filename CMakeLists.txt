@@ -47,7 +47,6 @@ target_compile_definitions(vitalab PRIVATE VITALAB_PORT=${VITALAB_PORT})
 target_link_libraries(vitalab
   vitalab_protocol
   gcc
-  SceLibc_stub_weak
   SceIofilemgr_stub_weak
   SceKernelThreadMgr_stub_weak
   SceLibKernel_stub_weak
@@ -59,5 +58,42 @@ vita_create_self(vitalab.suprx vitalab
   UNSAFE
   CONFIG "${CMAKE_CURRENT_SOURCE_DIR}/plugin/vitalab.yml"
 )
+
+# VitaSDK's SELF macro accumulates its flags globally. Reset them before the
+# ordinary test application so it does not inherit the plugin export YAML.
+set(VITA_ELF_CREATE_FLAGS "" CACHE STRING "vita-elf-create flags" FORCE)
+set(VITA_MAKE_FSELF_FLAGS "" CACHE STRING "vita-make-fself flags" FORCE)
+
+file(TO_CMAKE_PATH
+  "$ENV{VITASDK}/share/gcc-arm-vita-eabi/samples/common"
+  VITA_SAMPLE_COMMON
+)
+if(NOT EXISTS "${VITA_SAMPLE_COMMON}/debugScreen.h")
+  message(FATAL_ERROR "VitaSDK debugScreen sample support was not found at ${VITA_SAMPLE_COMMON}")
+endif()
+
+add_executable(vitalab_plugin_test
+  test-loader/main.c
+  "${VITA_SAMPLE_COMMON}/debugScreen.c"
+)
+target_include_directories(vitalab_plugin_test PRIVATE "${VITA_SAMPLE_COMMON}")
+target_compile_options(vitalab_plugin_test PRIVATE -Wall -Wextra -Werror)
+target_link_libraries(vitalab_plugin_test
+  SceCtrl_stub
+  SceDisplay_stub
+  SceKernelModulemgr_stub
+  SceLibKernel_stub
+  SceNet_stub
+  SceSysmodule_stub
+)
+vita_create_self(plugin-test-eboot.bin vitalab_plugin_test UNSAFE)
+
+vita_create_vpk(VitaLabPluginTest.vpk VLAB00200 plugin-test-eboot.bin
+  VERSION 01.00
+  NAME "VitaLab Plugin Test"
+  FILE "${CMAKE_CURRENT_BINARY_DIR}/vitalab.suprx" vitalab.suprx
+  FILE "${VITA_SAMPLE_COMMON}/../hello_world/sce_sys/icon0.png" sce_sys/icon0.png
+)
+add_dependencies(VitaLabPluginTest.vpk-vpk vitalab.suprx-self)
 
 message(STATUS "VitaLab build identity: ${VITALAB_BUILD_ID}")

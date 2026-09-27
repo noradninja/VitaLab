@@ -23,11 +23,26 @@ The relevant outputs are:
 
 - `build-vita-plugin\vitalab.suprx`: the deployable SceShell plugin.
 - `build-vita-plugin\vitalab`: the exact debug ELF retained with a hardware run.
+- `build-vita-plugin\VitaLabPluginTest.vpk`: a safe foreground loader used
+  before enabling the plugin at boot.
 
 The configure step embeds a build ID and Git commit into the plugin. Reconfigure
 before a release build so these values match the intended source revision.
 
-## Install safely
+## Safety gate: foreground loader
+
+Do not add the plugin to taiHEN configuration for its first hardware test.
+
+1. Install `VitaLabPluginTest.vpk` normally with VitaShell.
+2. Open the `VitaLab Plugin Test` bubble.
+3. Record the displayed `Plugin module` and `Start status` values.
+4. Leave the loader open for at least five seconds and run the host test.
+5. Press X to stop and unload the module before exiting.
+
+If the module fails during this test, only the foreground loader application is
+affected; SceShell is not configured to load it during boot.
+
+## Enable in SceShell after the safety gate passes
 
 1. Back up the active taiHEN `config.txt` before editing it.
 2. Copy `vitalab.suprx` to `ur0:tai/vitalab.suprx` with VitaShell.

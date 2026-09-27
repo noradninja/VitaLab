@@ -6,14 +6,12 @@
 #include <psp2/kernel/threadmgr.h>
 #include <psp2/net/net.h>
 
-#include <stdarg.h>
-#include <stdio.h>
-#include <string.h>
-
 #ifndef VITALAB_PORT
 #define VITALAB_PORT 19600
 #endif
 
+#define STRINGIFY_INNER(value) #value
+#define STRINGIFY(value) STRINGIFY_INNER(value)
 #define REPLY_SIZE 256
 #define RETRY_DELAY_US (2 * 1000 * 1000)
 #define STARTUP_DELAY_US (3 * 1000 * 1000)
@@ -23,29 +21,47 @@ static volatile int g_server = -1;
 static volatile int g_client = -1;
 static SceUID g_thread = -1;
 
-static void log_message(const char *format, ...) {
-  char buffer[256];
-  va_list args;
-  int length;
-  SceUID fd;
+static int text_length(const char *text) {
+  int length = 0;
+  while (text[length] != '\0') {
+    ++length;
+  }
+  return length;
+}
 
-  va_start(args, format);
-  length = vsnprintf(buffer, sizeof(buffer), format, args);
-  va_end(args);
-  if (length < 0) {
-    return;
-  }
-  if ((size_t)length >= sizeof(buffer)) {
-    length = (int)sizeof(buffer) - 1;
-  }
+static void log_record(const char *text, int length) {
+  SceUID fd;
 
   sceIoMkdir("ux0:data/vitalab", 0777);
   fd = sceIoOpen("ux0:data/vitalab/agent.log",
     SCE_O_WRONLY | SCE_O_CREAT | SCE_O_APPEND, 0666);
   if (fd >= 0) {
-    sceIoWrite(fd, buffer, (SceSize)length);
+    sceIoWrite(fd, text, (SceSize)length);
     sceIoClose(fd);
   }
+}
+
+static void log_text(const char *text) {
+  log_record(text, text_length(text));
+}
+
+static void log_error(const char *prefix, int error) {
+  static const char hex[] = "0123456789ABCDEF";
+  char buffer[96];
+  unsigned int value = (unsigned int)error;
+  int position = 0;
+  int shift;
+
+  while (*prefix != '\0' && position < (int)sizeof(buffer) - 12) {
+    buffer[position++] = *prefix++;
+  }
+  buffer[position++] = '0';
+  buffer[position++] = 'x';
+  for (shift = 28; shift >= 0; shift -= 4) {
+    buffer[position++] = hex[(value >> shift) & 0xF];
+  }
+  buffer[position++] = '\n';
+  log_record(buffer, position);
 }
 
 static int send_all(int socket_id, const char *data, int length) {
@@ -122,7 +138,13 @@ static int open_server(void) {
 
   sceNetSetsockopt(server, SCE_NET_SOL_SOCKET, SCE_NET_SO_REUSEADDR,
     &reuse_address, sizeof(reuse_address));
-  memset(&address, 0, sizeof(address));
+  {
+    unsigned char *bytes = (unsigned char *)&address;
+    unsigned int index;
+    for (index = 0; index < sizeof(address); ++index) {
+      bytes[index] = 0;
+    }
+  }
   address.sin_len = sizeof(address);
   address.sin_family = SCE_NET_AF_INET;
   address.sin_port = sceNetHtons(VITALAB_PORT);
@@ -147,25 +169,25 @@ static int server_thread(SceSize args, void *argp) {
   (void)argp;
 
   sceKernelDelayThread(STARTUP_DELAY_US);
+  log_text("loading build=" VITALAB_BUILD_ID " commit="
+    VITALAB_GIT_COMMIT "\n");
   while (g_running) {
     int server = open_server();
     if (server < 0) {
-      log_message("listener error=0x%08X; retrying\n", (unsigned int)server);
+      log_error("listener error=", server);
       sceKernelDelayThread(RETRY_DELAY_US);
       continue;
     }
 
     g_server = server;
-    log_message("ready protocol=%d port=%d build=%s commit=%s\n",
-      VITALAB_PROTOCOL_VERSION, VITALAB_PORT, VITALAB_BUILD_ID,
-      VITALAB_GIT_COMMIT);
+    log_text("ready protocol=1 port=" STRINGIFY(VITALAB_PORT)
+      " build=" VITALAB_BUILD_ID " commit=" VITALAB_GIT_COMMIT "\n");
 
     while (g_running) {
       int client = sceNetAccept(server, NULL, NULL);
       if (client < 0) {
         if (g_running) {
-          log_message("accept error=0x%08X; reopening listener\n",
-            (unsigned int)client);
+          log_error("accept error=", client);
         }
         break;
       }
@@ -182,7 +204,7 @@ static int server_thread(SceSize args, void *argp) {
     }
   }
 
-  log_message("stopped\n");
+  log_text("stopped\n");
   return 0;
 }
 
@@ -198,14 +220,11 @@ int module_start(SceSize argc, const void *args) {
     return SCE_KERNEL_START_SUCCESS;
   }
 
-  log_message("loading build=%s commit=%s\n", VITALAB_BUILD_ID,
-    VITALAB_GIT_COMMIT);
   g_running = 1;
   g_thread = sceKernelCreateThread("VitaLabServer", server_thread,
     0x40, 0x10000, 0, 0, NULL);
   if (g_thread < 0) {
     g_running = 0;
-    log_message("thread create error=0x%08X\n", (unsigned int)g_thread);
     return g_thread;
   }
 
@@ -214,7 +233,6 @@ int module_start(SceSize argc, const void *args) {
     sceKernelDeleteThread(g_thread);
     g_thread = -1;
     g_running = 0;
-    log_message("thread start error=0x%08X\n", (unsigned int)result);
     return result;
   }
   return SCE_KERNEL_START_SUCCESS;

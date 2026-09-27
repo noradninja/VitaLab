@@ -313,7 +313,8 @@ The same interface could later be consumed by local systems such as Continuity o
 
 The current milestone is a minimal SceShell user plugin providing versioned
 `HELLO`, `PING`, and `INFO` commands over TCP. File transfer and application
-control remain future work.
+control remain future work. A foreground loader VPK is used as a safety gate
+before enabling the plugin under taiHEN's `*main` section.
 
 The initial Host-to-Agent proof is documented in [docs/phase-1.md](docs/phase-1.md).
 
