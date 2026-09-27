@@ -13,7 +13,9 @@ code change -> build -> deploy -> run on real hardware -> collect evidence -> an
 VitaLab is intended to remove as much manual work as possible from low-level Vita development while keeping the **real Vita hardware as the authority** for whether a build actually works.
 
 > [!NOTE]
-> VitaLab is currently in early development. This README describes the intended architecture and initial implementation roadmap; most components are not implemented yet.
+> VitaLab is currently in early development. Phase 1 now has a buildable
+> SceShell user plugin and a host-side protocol test; real-hardware behavior
+> remains authoritative.
 
 ## Why?
 
@@ -74,7 +76,9 @@ VitaLab is designed as a **generic platform**, not as tooling tied to one applic
 
 ### VitaLab Agent
 
-A small persistent Vita-side component responsible for generic hardware control and supervision.
+A small user-mode taiHEN plugin loaded into SceShell for generic hardware
+control and supervision. The current implementation does not include a kernel
+module.
 
 Planned responsibilities include:
 
@@ -307,9 +311,11 @@ The same interface could later be consumed by local systems such as Continuity o
 
 ## Status
 
-Early development / architecture stage.
+The current milestone is a minimal SceShell user plugin providing versioned
+`HELLO`, `PING`, and `INFO` commands over TCP. File transfer and application
+control remain future work.
 
-The first milestone is a minimal Host/Agent connection capable of reliable Ethernet communication and file transfer to a real PlayStation TV.
+The initial Host-to-Agent proof is documented in [docs/phase-1.md](docs/phase-1.md).
 
 ---
 
