@@ -128,4 +128,22 @@ Evidence is under
 `runs/20260927T202450093Z-stress-2723eda75cab-20260927T200210Z/`.
 
 This validates bounded repeated connections, not long-duration soak behavior.
-Network disconnect/recovery remains the next gate.
+
+## Ethernet disconnect and recovery
+
+`host/Test-VitaLabNetworkRecovery.ps1` verifies a passing baseline, observes
+that the configured endpoint becomes unreachable, and then requires the same
+agent identity to return after the operator confirms reconnection. The elapsed
+recovery metric begins after that confirmation; it does not measure physical
+Ethernet negotiation time.
+
+On 2026-09-27, with Wi-Fi fallback removed to preserve the Ethernet address,
+the agent passed this gate at `192.168.2.222`. The outage was observed as a TCP
+timeout, and the same build answered the first probe 15 ms after reconnection
+was confirmed. Evidence is under
+`runs/20260927T203019115Z-network-recovery-2723eda75cab-20260927T200210Z/`.
+
+The archived ELF SHA-256 remained
+`4033c6648348eb308a6cd560c4dee4434d4f66054d8eaf6ab8be1c18361a07c5`.
+This validates same-address Ethernet link recovery. Automatic interface
+failover to a different IP address requires future host discovery support.
