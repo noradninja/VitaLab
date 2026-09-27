@@ -114,3 +114,18 @@ Both runs passed `HELLO`, `PING`, and `INFO` and preserved an ELF with SHA-256
 This confirms the SceShell user-plugin thread and listener remain responsive
 under these foreground workloads. It does not yet validate suspend/resume,
 network loss/recovery, or long-duration reliability.
+
+## Repeated-connection stress
+
+`host/Test-VitaLabStress.ps1` opens a fresh TCP connection for every iteration
+and requires `HELLO`, `PING`, and `INFO` to pass with an unchanged agent
+identity. It writes one summary manifest and archives one matching debug ELF.
+
+On 2026-09-27, the boot-loaded agent passed 100 of 100 connections while the
+TFoUAD development build remained foregrounded. End-to-end iteration timing
+was 7.949 ms minimum, 9.509 ms average, 11.152 ms at p95, and 48.066 ms maximum.
+Evidence is under
+`runs/20260927T202450093Z-stress-2723eda75cab-20260927T200210Z/`.
+
+This validates bounded repeated connections, not long-duration soak behavior.
+Network disconnect/recovery remains the next gate.

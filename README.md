@@ -318,7 +318,7 @@ before enabling the plugin under taiHEN's `*main` section. Build
 `2723eda75cab-20260927T200210Z` has passed both the foreground-loader and
 boot-loaded SceShell tests on a real PlayStation TV. The same resident plugin
 also remained reachable while VitaShell and a TFoUAD development build were
-running in the foreground.
+running in the foreground, including a 100-connection protocol stress pass.
 
 The initial Host-to-Agent proof is documented in [docs/phase-1.md](docs/phase-1.md).
 
