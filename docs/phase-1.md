@@ -80,6 +80,22 @@ It then creates `runs\<timestamp>-<build-id>\manifest.json` and preserves the
 matching debug ELF beside it. The plugin also appends startup and listener
 diagnostics to `ux0:data/vitalab/agent.log`.
 
-Until the host test succeeds against the Vita TV, this build is toolchain
-validated only. Suspend/resume, network reconnection, SceShell restart, and
-coexistence with foreground applications require separate hardware checks.
+## Hardware validation record
+
+On 2026-09-27, build `2723eda75cab-20260927T200210Z` passed both safety gates
+on the Vita TV at `192.168.2.222`:
+
+- The foreground loader started and unloaded the SUPRX successfully.
+- The same SUPRX loaded at boot from taiHEN's `*main` section.
+- LiveArea remained operational after boot.
+- `HELLO`, `PING`, and `INFO` passed over TCP port `19600`.
+- The archived debug ELF SHA-256 matched the tested build:
+  `4033c6648348eb308a6cd560c4dee4434d4f66054d8eaf6ab8be1c18361a07c5`.
+
+The boot-loaded run manifest is under
+`runs/20260927T201213996Z-2723eda75cab-20260927T200210Z/`. The `runs` tree is
+intentionally ignored by Git and remains local hardware evidence.
+
+This validates boot loading and the initial protocol only. Suspend/resume,
+network loss/recovery, repeated connections, and behavior while another
+application is foregrounded remain open tests.
