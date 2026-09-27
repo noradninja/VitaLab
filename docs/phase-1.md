@@ -147,3 +147,21 @@ The archived ELF SHA-256 remained
 `4033c6648348eb308a6cd560c4dee4434d4f66054d8eaf6ab8be1c18361a07c5`.
 This validates same-address Ethernet link recovery. Automatic interface
 failover to a different IP address requires future host discovery support.
+
+## Standby and resume
+
+`host/Test-VitaLabStandbyResume.ps1` verifies the endpoint before standby,
+requires it to become unreachable while the Vita TV is suspended, and then
+requires the same agent identity after wake. Its detection metric begins only
+after the operator confirms that the display has returned; it does not measure
+the complete physical wake sequence.
+
+On 2026-09-27, the boot-loaded agent passed standby/resume while a TFoUAD build
+was foregrounded. The endpoint timed out during standby and the same build
+answered the first probe 11 ms after wake was confirmed. Evidence is under
+`runs/20260927T214353619Z-standby-resume-2723eda75cab-20260927T200210Z/`.
+
+The archived ELF SHA-256 remained
+`4033c6648348eb308a6cd560c4dee4434d4f66054d8eaf6ab8be1c18361a07c5`.
+This validates one standby/resume cycle. Repeated-cycle and long-duration soak
+behavior remain untested.

@@ -319,7 +319,8 @@ before enabling the plugin under taiHEN's `*main` section. Build
 boot-loaded SceShell tests on a real PlayStation TV. The same resident plugin
 also remained reachable while VitaShell and a TFoUAD development build were
 running in the foreground, including a 100-connection protocol stress pass and
-same-address Ethernet disconnect/recovery.
+same-address Ethernet disconnect/recovery. One standby/resume cycle also passed
+with the same agent identity and matching archived ELF.
 
 The initial Host-to-Agent proof is documented in [docs/phase-1.md](docs/phase-1.md).
 
