@@ -96,6 +96,21 @@ The boot-loaded run manifest is under
 `runs/20260927T201213996Z-2723eda75cab-20260927T200210Z/`. The `runs` tree is
 intentionally ignored by Git and remains local hardware evidence.
 
-This validates boot loading and the initial protocol only. Suspend/resume,
-network loss/recovery, repeated connections, and behavior while another
-application is foregrounded remain open tests.
+This validates boot loading and the initial protocol. Suspend/resume, network
+loss/recovery, and repeated-connection stress remain open tests.
+
+## Foreground-application coexistence
+
+The same boot-loaded build remained reachable while two user applications
+owned the foreground:
+
+- VitaShell: PASS at `2026-09-27T20:18:02Z`, archived under
+  `runs/20260927T201802416Z-2723eda75cab-20260927T200210Z/`.
+- A TFoUAD development build: PASS at `2026-09-27T20:20:05Z`, archived under
+  `runs/20260927T202005324Z-2723eda75cab-20260927T200210Z/`.
+
+Both runs passed `HELLO`, `PING`, and `INFO` and preserved an ELF with SHA-256
+`4033c6648348eb308a6cd560c4dee4434d4f66054d8eaf6ab8be1c18361a07c5`.
+This confirms the SceShell user-plugin thread and listener remain responsive
+under these foreground workloads. It does not yet validate suspend/resume,
+network loss/recovery, or long-duration reliability.
