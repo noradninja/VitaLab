@@ -165,3 +165,22 @@ The archived ELF SHA-256 remained
 `4033c6648348eb308a6cd560c4dee4434d4f66054d8eaf6ab8be1c18361a07c5`.
 This validates one standby/resume cycle. Repeated-cycle and long-duration soak
 behavior remain untested.
+
+## Application-control gate
+
+The next protocol extension adds two strictly validated commands:
+
+```text
+LAUNCH <TITLEID>
+STOP <TITLEID>
+```
+
+Title IDs must contain exactly nine uppercase ASCII letters or digits. Launch
+uses SceShell's AppMgr URI path; stop targets only the explicitly supplied title
+ID. The first hardware test uses the disposable `VLAB00210` visual target from
+`VitaLabControlTarget.vpk`, never a real development application.
+
+`host/Test-VitaLabApplicationControl.ps1` launches the target, confirms that
+the agent still answers while it is foregrounded, stops it, confirms that the
+agent identity remains unchanged, and archives the exact debug ELF. This gate
+remains unvalidated until its hardware manifest reports PASS.

@@ -1,4 +1,5 @@
 #include "protocol.h"
+#include "commands.h"
 
 #include <psp2/io/fcntl.h>
 #include <psp2/io/stat.h>
@@ -105,7 +106,10 @@ static void serve_client(int client) {
             --line_length;
           }
           line[line_length] = '\0';
-          reply_length = vitalab_protocol_reply(line, reply, sizeof(reply));
+          reply_length = vitalab_command_reply(line, reply, sizeof(reply));
+          if (reply_length == VITALAB_COMMAND_NOT_HANDLED) {
+            reply_length = vitalab_protocol_reply(line, reply, sizeof(reply));
+          }
           if (reply_length < 0 || reply_length >= (int)sizeof(reply) ||
               send_all(client, reply, reply_length) <= 0) {
             return;

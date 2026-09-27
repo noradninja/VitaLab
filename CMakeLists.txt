@@ -35,7 +35,10 @@ target_compile_definitions(vitalab_protocol PUBLIC
   VITALAB_BUILD_ID="${VITALAB_BUILD_ID}"
 )
 
-add_executable(vitalab plugin/main.c)
+add_executable(vitalab
+  plugin/main.c
+  plugin/commands.c
+)
 target_compile_options(vitalab PRIVATE
   -Wall
   -Wextra
@@ -47,6 +50,7 @@ target_compile_definitions(vitalab PRIVATE VITALAB_PORT=${VITALAB_PORT})
 target_link_libraries(vitalab
   vitalab_protocol
   gcc
+  SceAppMgr_stub
   SceIofilemgr_stub_weak
   SceKernelThreadMgr_stub_weak
   SceLibKernel_stub_weak
@@ -95,5 +99,36 @@ vita_create_vpk(VitaLabPluginTest.vpk VLAB00200 plugin-test-eboot.bin
   FILE "${VITA_SAMPLE_COMMON}/../hello_world/sce_sys/icon0.png" sce_sys/icon0.png
 )
 add_dependencies(VitaLabPluginTest.vpk-vpk vitalab.suprx-self)
+
+# Reset macro-global packaging flags before creating the independent control
+# target package.
+set(VITA_ELF_CREATE_FLAGS "" CACHE STRING "vita-elf-create flags" FORCE)
+set(VITA_MAKE_FSELF_FLAGS "" CACHE STRING "vita-make-fself flags" FORCE)
+set(VITA_MKSFOEX_FLAGS "" CACHE STRING "vita-mksfoex flags" FORCE)
+set(VITA_PACK_VPK_FLAGS "" CACHE STRING "vita-pack-vpk flags" FORCE)
+
+add_executable(vitalab_control_target
+  test-target/main.c
+  "${VITA_SAMPLE_COMMON}/debugScreen.c"
+)
+target_include_directories(vitalab_control_target PRIVATE "${VITA_SAMPLE_COMMON}")
+target_compile_options(vitalab_control_target PRIVATE -Wall -Wextra -Werror)
+target_link_libraries(vitalab_control_target
+  SceCtrl_stub
+  SceDisplay_stub
+  SceLibKernel_stub
+)
+vita_create_self(control-target-eboot.bin vitalab_control_target UNSAFE)
+
+vita_create_vpk(VitaLabControlTarget.vpk VLAB00210 control-target-eboot.bin
+  VERSION 01.00
+  NAME "VitaLab Control Target"
+  FILE "${VITA_SAMPLE_COMMON}/../hello_world/sce_sys/icon0.png" sce_sys/icon0.png
+)
+
+set(VITA_ELF_CREATE_FLAGS "" CACHE STRING "vita-elf-create flags" FORCE)
+set(VITA_MAKE_FSELF_FLAGS "" CACHE STRING "vita-make-fself flags" FORCE)
+set(VITA_MKSFOEX_FLAGS "" CACHE STRING "vita-mksfoex flags" FORCE)
+set(VITA_PACK_VPK_FLAGS "" CACHE STRING "vita-pack-vpk flags" FORCE)
 
 message(STATUS "VitaLab build identity: ${VITALAB_BUILD_ID}")
