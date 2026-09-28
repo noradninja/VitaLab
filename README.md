@@ -271,7 +271,7 @@ The same interface could later be consumed by local systems such as Continuity o
 - [x] Build/run manifests
 - [x] Git commit/build identity tracking
 - [x] Preserve matching debug ELF
-- [ ] Automatic core dump symbolization
+- [x] Automatic core dump symbolization
 - [x] Structured result format
 - [x] Run artifact archive
 
@@ -370,7 +370,20 @@ the matching `.elf` and `.vpk` from one build:
     -TargetPackagePath E:\vita-yabause\build-vita\Yabause_Dynarec_Symbolization.vpk
 ```
 
+The first fresh Yabause hardware crash gate passed on 2026-09-28. VitaLab
+detected exactly one new dump, archived the installed-package pair, and resolved
+PC `0x810a1214` to `ScspExec`. The dump recorded a data abort with fault address
+`0x18`. The target was built from Yabause commit
+`56bf607c18aead9f5227340d6ddd738c418989ad`; the ELF SHA-256 was
+`86368dcff7ce0efc269658fe6ea212315e116f6ad66f08a516560c79d13cb0eb` and
+the VPK SHA-256 was
+`7c47b572d17db6be8b4d8dec8453925b7c778e4ee42d19056b3a36c1ce47d19c`.
+Evidence is under
+`runs/20260928T120337696Z-crash-symbolization-YABA00001`.
+
 The initial Host-to-Agent proof is documented in [docs/phase-1.md](docs/phase-1.md).
+The reproducible-run and local-symbolization proof is documented in
+[docs/phase-2.md](docs/phase-2.md).
 
 ---
 

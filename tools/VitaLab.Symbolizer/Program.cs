@@ -256,7 +256,7 @@ static string FormatText(Analysis analysis)
         AppendAddress(text, null, record.Address);
     }
     text.AppendLine();
-    text.AppendLine("Note: stack candidates are not a proven call stack; this build lacks sufficient unwind metadata.");
+    text.AppendLine("Note: stack candidates are not a proven call stack; this symbolizer does not yet perform CFI unwinding.");
     return text.ToString();
 }
 

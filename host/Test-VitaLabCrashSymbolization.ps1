@@ -138,7 +138,7 @@ $targetPackageHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $targetPackage
 $expectedIdentity = Get-VitaLabElfIdentity -ElfPath $agentElf
 $targetGitRoot = Find-GitRoot -Path $targetElf
 $targetGitCommit = if ($null -ne $targetGitRoot) { (& git -C $targetGitRoot rev-parse HEAD).Trim() } else { $null }
-$targetGitDirty = if ($null -ne $targetGitRoot) { [bool](& git -C $targetGitRoot status --porcelain) } else { $null }
+$targetGitDirty = if ($null -ne $targetGitRoot) { [bool](& git -C $targetGitRoot status --porcelain --untracked-files=no) } else { $null }
 $startedAt = [DateTime]::UtcNow
 $timestamp = $startedAt.ToString('yyyyMMddTHHmmssfffZ')
 $runDirectory = Join-Path $RunRoot "$timestamp-crash-symbolization-$TitleId"
