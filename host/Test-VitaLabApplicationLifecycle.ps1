@@ -152,6 +152,7 @@ try {
         throw "Launch failed: $($responses.LAUNCH)"
     }
     $launched = $true
+    Write-Host 'If the Vita asks to close the current application, approve the close dialog.'
 
     $runningDetection = Wait-ForState -ExpectedState 'RUNNING' -TimeoutSeconds $LaunchTimeoutSeconds -Samples $launchSamples
     $responses.PING_RUNNING = Invoke-AgentLine 'PING'

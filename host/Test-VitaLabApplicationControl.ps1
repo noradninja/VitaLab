@@ -74,6 +74,7 @@ try {
     if ($responses.LAUNCH -ne "OK LAUNCH $TitleId") {
         throw "Launch failed: $($responses.LAUNCH)"
     }
+    Write-Host 'If the Vita asks to close the current application, approve the close dialog.'
 
     Start-Sleep -Seconds $VisibleSeconds
     $responses.PING_FOREGROUND = Invoke-AgentLine 'PING'

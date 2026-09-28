@@ -38,6 +38,19 @@ SHA-256 was
 The complete evidence is under
 `runs/20260928T120337696Z-crash-symbolization-YABA00001`.
 
+## Vita system dialogs
+
+Launching a title can display a confirmation asking the operator to close the
+currently active application. Host launch gates print an explicit instruction
+to approve that dialog while continuing to poll for `RUNNING`.
+
+After a crash, VitaLab waits until the new dump appears and retrieves it before
+asking the operator to clear the Vita crash dialog. The host then pauses until
+the operator confirms that LiveArea is visible, after which it verifies agent
+health and identity. The optional `-SkipCrashDialogConfirmation` switch is
+reserved for deliberately unattended runs. Neither manual wait blocks the
+agent's TCP listener.
+
 ## Local symbolization boundaries
 
 The current decoder relocates runtime addresses to the matching target ELF,

@@ -370,6 +370,13 @@ the matching `.elf` and `.vpk` from one build:
     -TargetPackagePath E:\vita-yabause\build-vita\Yabause_Dynarec_Symbolization.vpk
 ```
 
+Launch gates remind the operator to approve the Vita's close-current-application
+dialog when it appears. After a new crash dump has been retrieved and archived,
+the crash gate pauses on the host until the operator clears the Vita crash
+dialog and confirms that LiveArea is visible. This waiting remains host-side;
+the SceShell agent listener stays available. For explicitly unattended runs,
+`-SkipCrashDialogConfirmation` bypasses only the final manual confirmation.
+
 The first fresh Yabause hardware crash gate passed on 2026-09-28. VitaLab
 detected exactly one new dump, archived the installed-package pair, and resolved
 PC `0x810a1214` to `ScspExec`. The dump recorded a data abort with fault address

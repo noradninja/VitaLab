@@ -21,6 +21,7 @@ param(
     [int]$PollIntervalMs = 500,
     [ValidateRange(100, 60000)]
     [int]$TimeoutMs = 5000,
+    [switch]$SkipCrashDialogConfirmation,
     [string]$VitaSdkPath = 'E:\dev\VitaSDK',
     [string]$AgentElfPath = (Join-Path $PSScriptRoot '..\build-vita-plugin\vitalab'),
     [string]$RunRoot = (Join-Path $PSScriptRoot '..\runs')
@@ -155,6 +156,7 @@ $newDumps = @()
 $symbolizations = [Collections.Generic.List[object]]::new()
 $agentVersion = $null; $buildId = $null; $gitCommit = $null
 $failure = $null; $result = 'FAIL'; $launched = $false
+$crashDialogConfirmedAt = $null
 
 try {
     $responses.INFO_BEFORE = Invoke-AgentLine 'INFO'
@@ -174,6 +176,7 @@ try {
     $responses.LAUNCH = Invoke-AgentLine "LAUNCH $TitleId"
     if ($responses.LAUNCH -ne "OK LAUNCH $TitleId") { throw "Launch failed: $($responses.LAUNCH)" }
     $launched = $true
+    Write-Host 'If the Vita asks to close the current application, approve the close dialog.'
     Write-Host "Title $TitleId launched. Reproduce the expected crash within $CrashTimeoutSeconds seconds."
 
     $launchDeadline = [DateTime]::UtcNow.AddSeconds($LaunchTimeoutSeconds)
@@ -223,6 +226,11 @@ try {
     if (-not ($symbolizations | Where-Object { $_.Function -and $_.Function -ne '??' })) {
         throw 'The new dump did not resolve its crash PC to a target-ELF function.'
     }
+    if (-not $SkipCrashDialogConfirmation) {
+        Read-Host 'The new dump is archived. Clear the Vita crash dialog, wait for LiveArea, then press Enter' | Out-Null
+        $crashDialogConfirmedAt = [DateTime]::UtcNow
+        $responses.STATUS_AFTER_CRASH_DIALOG = (Get-Status).response
+    }
     $responses.PING_AFTER = Invoke-AgentLine 'PING'
     $responses.INFO_AFTER = Invoke-AgentLine 'INFO'
     if ($responses.PING_AFTER -ne 'PONG' -or $responses.INFO_AFTER -ne $responses.INFO_BEFORE) {
@@ -250,6 +258,11 @@ $manifest = [ordered]@{
     }
     dumpsBefore = $beforeDumps; dumpsAfter = $afterDumps; newDumps = $newDumps
     statusSamples = $statusSamples; symbolizations = $symbolizations; responses = $responses; failure = $failure
+    manualActions = [ordered]@{
+        launchCloseDialogInstructionShown = $true
+        crashDialogConfirmationRequired = (-not $SkipCrashDialogConfirmation)
+        crashDialogConfirmedAtUtc = if ($null -ne $crashDialogConfirmedAt) { $crashDialogConfirmedAt.ToString('o') } else { $null }
+    }
 }
 $manifest | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $runDirectory 'manifest.json') -Encoding utf8
 
@@ -258,6 +271,7 @@ $manifest | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $runD
     NewDumps = $newDumps.Count; SymbolizedDumps = $symbolizations.Count
     CrashFunction = if ($symbolizations.Count -gt 0) { $symbolizations[0].Function } else { $null }
     CrashLocation = if ($symbolizations.Count -gt 0) { $symbolizations[0].Location } else { $null }
+    CrashDialogConfirmed = ($null -ne $crashDialogConfirmedAt)
     TargetElfSha256 = $targetElfHash; TargetPackageSha256 = $targetPackageHash
     BuildId = $buildId; AgentElfSha256 = $agentHash
     RunDirectory = (Resolve-Path -LiteralPath $runDirectory).Path
