@@ -5,3 +5,7 @@
 /runs/
 tools/VitaLab.Symbolizer/bin/
 tools/VitaLab.Symbolizer/obj/
+tools/VitaLab.Capture/bin/
+tools/VitaLab.Capture/obj/
+/third_party/ffmpeg/cache/
+/third_party/ffmpeg/payload/

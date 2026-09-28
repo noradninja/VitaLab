@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "name": "FFmpeg",
+  "version": "n9.0.2-14-gebafaee10a-20260928",
+  "releaseBranch": "9.0",
+  "sourceCommit": "ebafaee10ab45fce1964bd09efcd848e2da5b401",
+  "license": "LGPL-3.0-or-later",
+  "binary": {
+    "provider": "BtbN/FFmpeg-Builds",
+    "archiveName": "ffmpeg-n9.0-latest-win64-lgpl-9.0.zip",
+    "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-win64-lgpl-9.0.zip",
+    "sha256": "caef5bdbd39ab8e719b34d7e87dee2cf84568d84932256465600f1b042b072c3",
+    "payloadDirectory": "ffmpeg-n9.0-latest-win64-lgpl-9.0",
+    "files": {
+      "bin/ffmpeg.exe": "4ca15a262e8ea592d7d27f9ef78cd4ef5d2be1f7482fc4d38570749421e426eb",
+      "bin/ffprobe.exe": "40897d70483660d5af3b1652e9f885994cbd1f3cb5fd7b19087712e9d4309c75"
+    }
+  },
+  "source": {
+    "archiveName": "ffmpeg-ebafaee10ab45fce1964bd09efcd848e2da5b401.tar.gz",
+    "url": "https://github.com/FFmpeg/FFmpeg/archive/ebafaee10ab45fce1964bd09efcd848e2da5b401.tar.gz",
+    "sha256": "4fb0f61392cb355459f0f9fec819b47d3c698774b89c1df7029a897101ccb502"
+  },
+  "forbiddenConfigureFlags": [
+    "--enable-gpl",
+    "--enable-nonfree"
+  ],
+  "requiredCapabilities": {
+    "devices": ["dshow"],
+    "muxers": ["matroska"],
+    "encoders": ["aac", "mpeg4", "png"],
+    "preferredEncoders": ["h264_mf"]
+  }
+}
