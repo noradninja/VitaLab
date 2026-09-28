@@ -242,4 +242,16 @@ after the declared byte count arrives.
 `host/Test-VitaLabFileTransfer.ps1` checks invalid paths and the size bound,
 uploads a 64 KiB random payload to a unique path, downloads it, compares the
 source and downloaded SHA-256 hashes, rechecks agent identity, and archives both
-payloads with the exact agent ELF. Hardware validation remains pending.
+payloads with the exact agent ELF.
+
+On 2026-09-28, build `4a8feadb464c-20260928T021934Z` passed this gate. The
+agent rejected traversal, absolute-path, and oversized-upload probes, then
+round-tripped 65,536 bytes at
+`transfer-tests/20260928T103123317Z-roundtrip.bin`. The source and downloaded
+SHA-256 hashes both were
+`111aab1b18b769c66f687a70340791c05bceef39fac7d3b5589c5e9eb4c53a68`.
+Evidence is under
+`runs/20260928T103123317Z-file-transfer-4a8feadb464c-20260928T021934Z/`.
+
+The archived ELF SHA-256 was
+`828dd62127d0f872cefbb65e37f3529f5b84ef9f40dc07494328b777d08fc01c`.

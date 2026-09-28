@@ -261,7 +261,7 @@ The same interface could later be consumed by local systems such as Continuity o
 
 - [x] Define Host/Agent protocol
 - [x] Establish reliable Ethernet connection to PlayStation TV
-- [ ] Upload/download files
+- [x] Upload/download files
 - [x] Launch and terminate a test application
 - [x] Detect application termination
 - [ ] Retrieve logs and core dumps
@@ -333,8 +333,9 @@ TFoUAD: stopped before launch, running after launch, and stopped after a normal
 on-device exit. Waiting and timeouts remain host-side so the agent listener
 never blocks on application termination.
 
-The next hardware gate verifies safe file-transfer round trips under
-`ux0:data/vitalab/files/`, including traversal rejection and SHA-256 integrity.
+Build `4a8feadb464c-20260928T021934Z` passed the safe file-transfer gate under
+`ux0:data/vitalab/files/`: traversal, absolute paths, and oversized uploads were
+rejected, and a 64 KiB upload/download round trip preserved its SHA-256 hash.
 
 The initial Host-to-Agent proof is documented in [docs/phase-1.md](docs/phase-1.md).
 
