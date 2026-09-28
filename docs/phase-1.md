@@ -196,3 +196,24 @@ The archived ELF SHA-256 was
 `ec2b3f30189157ea04e724b9c57307771fb015b65ad1e069b540b5a30b55f177`.
 All host gates now compare the running agent's version, build ID, and Git commit
 with the INFO identity embedded in the selected ELF before accepting a PASS.
+
+## Application-lifecycle gate
+
+The lifecycle extension adds a non-blocking query:
+
+```text
+STATUS <TITLEID>
+```
+
+It uses AppMgr's title-directed process lookup and returns
+`OK STATUS <TITLEID> RUNNING` when that exact title is active, or
+`OK STATUS <TITLEID> STOPPED` when AppMgr reports that the application is
+absent. Other lookup failures return `ERR STATUS 0x........` so a failed query
+cannot be mistaken for a stopped application. Title-ID validation is identical
+to `LAUNCH` and `STOP`.
+
+`host/Test-VitaLabApplicationLifecycle.ps1` requires the target to begin
+stopped, launches it, polls until it is running, and then polls for a normal
+on-device exit. Polling and timeouts stay on the host so the agent continues to
+answer other connections. The test archives all status samples and the exact
+debug ELF. Hardware validation remains pending for TFoUAD title ID `WSCG00005`.

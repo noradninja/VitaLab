@@ -3,6 +3,7 @@
 #include <psp2/appmgr.h>
 
 #define TITLE_ID_LENGTH 9
+#define SCE_APPMGR_ERROR_APP_NOT_FOUND ((int)0x80802012U)
 
 static int starts_with(const char *text, const char *prefix) {
   while (*prefix != '\0') {
@@ -82,6 +83,24 @@ static int invalid_title_reply(char *reply, size_t reply_size) {
   return append_text(reply, reply_size, 0, "ERR INVALID_TITLE_ID\n");
 }
 
+static int status_reply(char *reply, size_t reply_size, const char *title_id,
+    const char *state) {
+  int position = append_text(reply, reply_size, 0, "OK STATUS ");
+  if (position >= 0) {
+    position = append_text(reply, reply_size, position, title_id);
+  }
+  if (position >= 0) {
+    position = append_text(reply, reply_size, position, " ");
+  }
+  if (position >= 0) {
+    position = append_text(reply, reply_size, position, state);
+  }
+  if (position >= 0) {
+    position = append_text(reply, reply_size, position, "\n");
+  }
+  return position;
+}
+
 static int launch_title(const char *title_id, char *reply, size_t reply_size) {
   char uri[29] = "psgm:play?titleid=";
   int index;
@@ -105,6 +124,23 @@ static int stop_title(const char *title_id, char *reply, size_t reply_size) {
   return success_reply(reply, reply_size, "STOP", title_id);
 }
 
+static int status_title(const char *title_id, char *reply,
+    size_t reply_size) {
+  SceUID pid = -1;
+  int result = sceAppMgrGetIdByName(&pid, title_id);
+
+  if (result == 0 && pid >= 0) {
+    return status_reply(reply, reply_size, title_id, "RUNNING");
+  }
+  if (result == SCE_APPMGR_ERROR_APP_NOT_FOUND) {
+    return status_reply(reply, reply_size, title_id, "STOPPED");
+  }
+  if (result == 0) {
+    result = SCE_APPMGR_ERROR_STATE;
+  }
+  return error_reply(reply, reply_size, "STATUS", result);
+}
+
 int vitalab_command_reply(const char *line, char *reply, size_t reply_size) {
   const char *title_id;
   if (starts_with(line, "LAUNCH ")) {
@@ -120,6 +156,13 @@ int vitalab_command_reply(const char *line, char *reply, size_t reply_size) {
       return invalid_title_reply(reply, reply_size);
     }
     return stop_title(title_id, reply, reply_size);
+  }
+  if (starts_with(line, "STATUS ")) {
+    title_id = line + 7;
+    if (!valid_title_id(title_id)) {
+      return invalid_title_reply(reply, reply_size);
+    }
+    return status_title(title_id, reply, reply_size);
   }
   return VITALAB_COMMAND_NOT_HANDLED;
 }
