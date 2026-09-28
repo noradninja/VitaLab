@@ -216,4 +216,16 @@ to `LAUNCH` and `STOP`.
 stopped, launches it, polls until it is running, and then polls for a normal
 on-device exit. Polling and timeouts stay on the host so the agent continues to
 answer other connections. The test archives all status samples and the exact
-debug ELF. Hardware validation remains pending for TFoUAD title ID `WSCG00005`.
+debug ELF.
+
+On 2026-09-28, build `9f65e6e8d0bf-20260928T021159Z` passed this gate against
+TFoUAD title ID `WSCG00005`. The test rejected malformed and lowercase title
+IDs, observed the initial `STOPPED` state, detected `RUNNING` 1.024 seconds
+after launch polling began, and detected `STOPPED` 34.369 seconds after the
+normal-exit polling window began. `PING` passed while TFoUAD was running and
+again after exit, and the agent INFO identity remained unchanged. Evidence is
+under
+`runs/20260928T021317617Z-application-lifecycle-9f65e6e8d0bf-20260928T021159Z/`.
+
+The archived ELF SHA-256 was
+`0273e2cada03510ff40380e88a5990ea81f598e5c37eb8b99c17f1963bacdeb5`.

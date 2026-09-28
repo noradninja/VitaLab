@@ -259,11 +259,11 @@ The same interface could later be consumed by local systems such as Continuity o
 
 ### Phase 1 - Communication and deployment
 
-- [ ] Define Host/Agent protocol
-- [ ] Establish reliable Ethernet connection to PlayStation TV
+- [x] Define Host/Agent protocol
+- [x] Establish reliable Ethernet connection to PlayStation TV
 - [ ] Upload/download files
-- [ ] Launch and terminate a test application
-- [ ] Detect application termination
+- [x] Launch and terminate a test application
+- [x] Detect application termination
 - [ ] Retrieve logs and core dumps
 
 ### Phase 2 - Reproducible hardware runs
@@ -328,10 +328,10 @@ while it was foregrounded, and stopped it while retaining the same identity.
 Host tests now reject a run when the resident agent identity does not match the
 identity embedded in the ELF selected for archival.
 
-The next hardware gate verifies title lifecycle observation: inactive,
-running after launch, and stopped after a normal on-device exit. Waiting and
-timeouts remain host-side so the agent listener never blocks on application
-termination.
+Build `9f65e6e8d0bf-20260928T021159Z` passed title lifecycle observation against
+TFoUAD: stopped before launch, running after launch, and stopped after a normal
+on-device exit. Waiting and timeouts remain host-side so the agent listener
+never blocks on application termination.
 
 The initial Host-to-Agent proof is documented in [docs/phase-1.md](docs/phase-1.md).
 
