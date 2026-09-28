@@ -177,10 +177,22 @@ STOP <TITLEID>
 
 Title IDs must contain exactly nine uppercase ASCII letters or digits. Launch
 uses SceShell's AppMgr URI path; stop targets only the explicitly supplied title
-ID. The first hardware test uses the disposable `VLAB00210` visual target from
-`VitaLabControlTarget.vpk`, never a real development application.
+ID. The host script requires an explicit title ID so VitaLab does not assume a
+project-specific default. `VitaLabControlTarget.vpk` remains available as a
+disposable visual target with title ID `VLAB00210`.
 
 `host/Test-VitaLabApplicationControl.ps1` launches the target, confirms that
 the agent still answers while it is foregrounded, stops it, confirms that the
-agent identity remains unchanged, and archives the exact debug ELF. This gate
-remains unvalidated until its hardware manifest reports PASS.
+agent identity remains unchanged, and archives the exact debug ELF.
+
+On 2026-09-28, build `594db396a2ea-20260928T012818Z` passed this gate against
+the installed TFoUAD development build with title ID `WSCG00005`. The launch
+returned `OK LAUNCH WSCG00005`, the agent returned `PONG` while TFoUAD was in
+the foreground, and stop returned `OK STOP WSCG00005`. The INFO identity was
+unchanged after the stop. Evidence is under
+`runs/20260928T013957947Z-application-control-594db396a2ea-20260928T012818Z/`.
+
+The archived ELF SHA-256 was
+`ec2b3f30189157ea04e724b9c57307771fb015b65ad1e069b540b5a30b55f177`.
+All host gates now compare the running agent's version, build ID, and Git commit
+with the INFO identity embedded in the selected ELF before accepting a PASS.

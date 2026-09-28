@@ -3,8 +3,9 @@ param(
     [string]$Address = '192.168.2.222',
     [ValidateRange(1, 65535)]
     [int]$Port = 19600,
+    [Parameter(Mandatory = $true)]
     [ValidatePattern('^[A-Z0-9]{9}$')]
-    [string]$TitleId = 'VLAB00210',
+    [string]$TitleId,
     [ValidateRange(1, 60)]
     [int]$VisibleSeconds = 5,
     [ValidateRange(100, 60000)]
@@ -14,6 +15,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'VitaLabHostCommon.ps1')
 
 function Invoke-AgentLine {
     param([string]$Command)
@@ -52,6 +54,7 @@ function Invoke-AgentLine {
 
 $resolvedElf = (Resolve-Path -LiteralPath $ElfPath).Path
 $elfHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $resolvedElf).Hash.ToLowerInvariant()
+$expectedIdentity = Get-VitaLabElfIdentity -ElfPath $resolvedElf
 $startedAt = [DateTime]::UtcNow
 $responses = [ordered]@{}
 $result = 'FAIL'
@@ -65,6 +68,7 @@ try {
     $agentVersion = $Matches[1]
     $buildId = $Matches[2]
     $gitCommit = $Matches[3]
+    Assert-VitaLabIdentityMatchesElf -Expected $expectedIdentity -AgentVersion $agentVersion -BuildId $buildId -GitCommit $gitCommit
 
     $responses.LAUNCH = Invoke-AgentLine "LAUNCH $TitleId"
     if ($responses.LAUNCH -ne "OK LAUNCH $TitleId") {

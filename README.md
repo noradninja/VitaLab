@@ -311,9 +311,9 @@ The same interface could later be consumed by local systems such as Continuity o
 
 ## Status
 
-The current milestone is a minimal SceShell user plugin providing versioned
-`HELLO`, `PING`, and `INFO` commands over TCP. File transfer and application
-control remain future work. A foreground loader VPK is used as a safety gate
+The current milestone is a SceShell user plugin providing versioned `HELLO`,
+`PING`, `INFO`, `LAUNCH`, and `STOP` commands over TCP. File transfer remains
+future work. A foreground loader VPK is used as a safety gate
 before enabling the plugin under taiHEN's `*main` section. Build
 `2723eda75cab-20260927T200210Z` has passed both the foreground-loader and
 boot-loaded SceShell tests on a real PlayStation TV. The same resident plugin
@@ -321,6 +321,12 @@ also remained reachable while VitaShell and a TFoUAD development build were
 running in the foreground, including a 100-connection protocol stress pass and
 same-address Ethernet disconnect/recovery. One standby/resume cycle also passed
 with the same agent identity and matching archived ELF.
+
+Build `594db396a2ea-20260928T012818Z` also passed the application-control gate
+against TFoUAD title ID `WSCG00005`: the agent launched it, remained reachable
+while it was foregrounded, and stopped it while retaining the same identity.
+Host tests now reject a run when the resident agent identity does not match the
+identity embedded in the ELF selected for archival.
 
 The initial Host-to-Agent proof is documented in [docs/phase-1.md](docs/phase-1.md).
 

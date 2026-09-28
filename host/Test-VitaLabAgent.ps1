@@ -10,6 +10,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'VitaLabHostCommon.ps1')
 
 function Read-AgentLine {
     param(
@@ -42,6 +43,7 @@ function Invoke-AgentCommand {
 
 $resolvedElf = (Resolve-Path -LiteralPath $ElfPath).Path
 $elfHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $resolvedElf).Hash.ToLowerInvariant()
+$expectedIdentity = Get-VitaLabElfIdentity -ElfPath $resolvedElf
 
 $client = [System.Net.Sockets.TcpClient]::new()
 try {
@@ -76,6 +78,7 @@ try {
     $agentVersion = $Matches[1]
     $buildId = $Matches[2]
     $agentCommit = $Matches[3]
+    Assert-VitaLabIdentityMatchesElf -Expected $expectedIdentity -AgentVersion $agentVersion -BuildId $buildId -GitCommit $agentCommit
     $timestamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')
     $safeBuildId = $buildId -replace '[^A-Za-z0-9._-]', '_'
     $runDirectory = Join-Path $RunRoot "$timestamp-$safeBuildId"

@@ -14,6 +14,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'VitaLabHostCommon.ps1')
 
 function Read-AgentLine {
     param(
@@ -103,6 +104,7 @@ function Invoke-StressIteration {
 
 $resolvedElf = (Resolve-Path -LiteralPath $ElfPath).Path
 $elfHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $resolvedElf).Hash.ToLowerInvariant()
+$expectedIdentity = Get-VitaLabElfIdentity -ElfPath $resolvedElf
 $startedAt = [DateTime]::UtcNow
 $records = [System.Collections.Generic.List[object]]::new()
 $identity = $null
@@ -111,6 +113,7 @@ $failure = $null
 for ($iteration = 1; $iteration -le $Iterations; $iteration++) {
     try {
         $sample = Invoke-StressIteration -TargetAddress $Address -TargetPort $Port -Timeout $TimeoutMs
+        Assert-VitaLabIdentityMatchesElf -Expected $expectedIdentity -AgentVersion $sample.agentVersion -BuildId $sample.buildId -GitCommit $sample.gitCommit
         if ($null -eq $identity) {
             $identity = [ordered]@{
                 agentVersion = $sample.agentVersion

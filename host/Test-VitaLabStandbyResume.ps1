@@ -16,6 +16,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'VitaLabHostCommon.ps1')
 
 function Read-AgentLine {
     param([System.IO.StreamReader]$Reader, [int]$Timeout)
@@ -95,11 +96,13 @@ function Invoke-AgentProbe {
 
 $resolvedElf = (Resolve-Path -LiteralPath $ElfPath).Path
 $elfHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $resolvedElf).Hash.ToLowerInvariant()
+$expectedIdentity = Get-VitaLabElfIdentity -ElfPath $resolvedElf
 $startedAt = [DateTime]::UtcNow
 $baseline = Invoke-AgentProbe -TargetAddress $Address -TargetPort $Port -Timeout $ProbeTimeoutMs
 if (-not $baseline.success) {
     throw "Baseline probe failed: $($baseline.error)"
 }
+Assert-VitaLabIdentityMatchesElf -Expected $expectedIdentity -AgentVersion $baseline.agentVersion -BuildId $baseline.buildId -GitCommit $baseline.gitCommit
 
 Write-Host "Baseline PASS for $($baseline.buildId)."
 Read-Host 'Put the Vita TV into standby, wait for its power light to settle, then press Enter'
