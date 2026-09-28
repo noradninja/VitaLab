@@ -337,6 +337,9 @@ Build `4a8feadb464c-20260928T021934Z` passed the safe file-transfer gate under
 `ux0:data/vitalab/files/`: traversal, absolute paths, and oversized uploads were
 rejected, and a 64 KiB upload/download round trip preserved its SHA-256 hash.
 
+The next hardware gate restricts artifact access to the VitaLab agent log and
+`psp2core-*.psp2dmp` files in `ux0:data/`, with host-side archival and hashing.
+
 The initial Host-to-Agent proof is documented in [docs/phase-1.md](docs/phase-1.md).
 
 ---

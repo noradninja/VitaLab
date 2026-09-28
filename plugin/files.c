@@ -1,6 +1,7 @@
 #include "files.h"
 
 #include <psp2/io/fcntl.h>
+#include <psp2/io/dirent.h>
 #include <psp2/io/stat.h>
 #include <psp2/net/net.h>
 
@@ -16,6 +17,26 @@ static int starts_with(const char *text, const char *prefix) {
     if (*text++ != *prefix++) {
       return 0;
     }
+  }
+  return 1;
+}
+
+static int text_equals(const char *left, const char *right) {
+  while (*left != '\0' && *right != '\0') {
+    if (*left++ != *right++) return 0;
+  }
+  return *left == *right;
+}
+
+static int ends_with(const char *text, const char *suffix) {
+  int text_length = 0;
+  int suffix_length = 0;
+  int index;
+  while (text[text_length] != '\0') ++text_length;
+  while (suffix[suffix_length] != '\0') ++suffix_length;
+  if (suffix_length > text_length) return 0;
+  for (index = 0; index < suffix_length; ++index) {
+    if (text[text_length - suffix_length + index] != suffix[index]) return 0;
   }
   return 1;
 }
@@ -289,18 +310,26 @@ static int handle_put(int client, const char *arguments) {
   return send_transfer_header(client, "PUT", relative, expected_size) < 0 ? -1 : 1;
 }
 
+static int send_named_file(int client, const char *verb, const char *name,
+    const char *full_path);
+
 static int handle_get(int client, const char *relative) {
   char full_path[MAX_FULL_PATH];
+  if (!valid_relative_path(relative) ||
+      build_full_path(full_path, sizeof(full_path), relative) < 0) {
+    return send_text(client, "ERR INVALID_PATH\n") < 0 ? -1 : 1;
+  }
+  return send_named_file(client, "GET", relative, full_path);
+}
+
+static int send_named_file(int client, const char *verb, const char *name,
+    const char *full_path) {
   char buffer[IO_BUFFER_SIZE];
   SceIoStat stat;
   SceUID fd;
   unsigned int sent_total = 0;
   int result;
 
-  if (!valid_relative_path(relative) ||
-      build_full_path(full_path, sizeof(full_path), relative) < 0) {
-    return send_text(client, "ERR INVALID_PATH\n") < 0 ? -1 : 1;
-  }
   result = sceIoGetstat(full_path, &stat);
   if (result < 0) return send_file_error(client, result) < 0 ? -1 : 1;
   if (stat.st_size < 0 || stat.st_size > MAX_FILE_SIZE) {
@@ -308,7 +337,7 @@ static int handle_get(int client, const char *relative) {
   }
   fd = sceIoOpen(full_path, SCE_O_RDONLY, 0);
   if (fd < 0) return send_file_error(client, fd) < 0 ? -1 : 1;
-  if (send_transfer_header(client, "GET", relative,
+  if (send_transfer_header(client, verb, name,
       (unsigned int)stat.st_size) < 0) {
     sceIoClose(fd);
     return -1;
@@ -327,8 +356,86 @@ static int handle_get(int client, const char *relative) {
   return 1;
 }
 
+static int valid_dump_name(const char *name) {
+  const char *cursor = name;
+  if (!starts_with(name, "psp2core-") || !ends_with(name, ".psp2dmp")) {
+    return 0;
+  }
+  while (*cursor != '\0') {
+    if (*cursor == '/') return 0;
+    ++cursor;
+  }
+  return valid_relative_path(name);
+}
+
+static int handle_get_log(int client, const char *name) {
+  if (!text_equals(name, "agent.log")) {
+    return send_text(client, "ERR INVALID_ARTIFACT\n") < 0 ? -1 : 1;
+  }
+  return send_named_file(client, "LOG", name,
+    "ux0:data/vitalab/agent.log");
+}
+
+static int handle_get_dump(int client, const char *name) {
+  char full_path[MAX_FULL_PATH];
+  int position;
+  if (!valid_dump_name(name)) {
+    return send_text(client, "ERR INVALID_ARTIFACT\n") < 0 ? -1 : 1;
+  }
+  position = append_text(full_path, sizeof(full_path), 0, "ux0:data/");
+  if (position >= 0) position = append_text(full_path, sizeof(full_path), position, name);
+  if (position < 0) return send_text(client, "ERR INVALID_ARTIFACT\n") < 0 ? -1 : 1;
+  return send_named_file(client, "DUMP", name, full_path);
+}
+
+static int send_dump_entry(int client, const char *name,
+    unsigned int size) {
+  char reply[192];
+  int position = append_text(reply, sizeof(reply), 0, "DUMP ");
+  if (position >= 0) position = append_text(reply, sizeof(reply), position, name);
+  if (position >= 0) position = append_text(reply, sizeof(reply), position, " ");
+  if (position >= 0) position = append_unsigned(reply, sizeof(reply), position, size);
+  if (position >= 0) position = append_text(reply, sizeof(reply), position, "\n");
+  return position < 0 ? -1 : send_all(client, reply, position);
+}
+
+static int handle_list_dumps(int client) {
+  SceUID directory = sceIoDopen("ux0:data");
+  int result;
+  if (directory < 0) return send_file_error(client, directory) < 0 ? -1 : 1;
+  if (send_text(client, "OK DUMPS\n") < 0) {
+    sceIoDclose(directory);
+    return -1;
+  }
+  for (;;) {
+    SceIoDirent entry;
+    unsigned int index;
+    unsigned char *bytes = (unsigned char *)&entry;
+    for (index = 0; index < sizeof(entry); ++index) bytes[index] = 0;
+    result = sceIoDread(directory, &entry);
+    if (result <= 0) break;
+    entry.d_name[sizeof(entry.d_name) - 1] = '\0';
+    if (SCE_S_ISREG(entry.d_stat.st_mode) &&
+        valid_dump_name(entry.d_name) &&
+        entry.d_stat.st_size >= 0 &&
+        entry.d_stat.st_size <= MAX_FILE_SIZE) {
+      if (send_dump_entry(client, entry.d_name,
+          (unsigned int)entry.d_stat.st_size) < 0) {
+        sceIoDclose(directory);
+        return -1;
+      }
+    }
+  }
+  sceIoDclose(directory);
+  if (result < 0) return send_file_error(client, result) < 0 ? -1 : 1;
+  return send_text(client, "END DUMPS\n") < 0 ? -1 : 1;
+}
+
 int vitalab_file_command(int client, const char *line) {
   if (starts_with(line, "PUT ")) return handle_put(client, line + 4);
+  if (starts_with(line, "GET LOG ")) return handle_get_log(client, line + 8);
+  if (starts_with(line, "GET DUMP ")) return handle_get_dump(client, line + 9);
   if (starts_with(line, "GET ")) return handle_get(client, line + 4);
+  if (text_equals(line, "LIST DUMPS")) return handle_list_dumps(client);
   return VITALAB_FILE_NOT_HANDLED;
 }

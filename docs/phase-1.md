@@ -255,3 +255,16 @@ Evidence is under
 
 The archived ELF SHA-256 was
 `828dd62127d0f872cefbb65e37f3529f5b84ef9f40dc07494328b777d08fc01c`.
+
+## Artifact-retrieval gate
+
+The artifact protocol exposes only three bounded operations: `GET LOG
+agent.log`, `LIST DUMPS`, and `GET DUMP <name>`. Log access is limited to
+`ux0:data/vitalab/agent.log`. Dump access is limited to regular files directly
+under `ux0:data/` whose basenames match `psp2core-*.psp2dmp`; callers cannot
+supply directories or arbitrary device paths.
+
+`host/Test-VitaLabArtifactRetrieval.ps1` verifies path rejection, retrieves and
+hashes the agent log, lists eligible dumps, optionally requires and retrieves
+one dump, rechecks agent identity, and archives the evidence with the exact ELF.
+Hardware validation remains pending.
