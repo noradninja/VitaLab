@@ -3,3 +3,5 @@
 /build-vita-visible/
 /build-vita-plugin/
 /runs/
+tools/VitaLab.Symbolizer/bin/
+tools/VitaLab.Symbolizer/obj/

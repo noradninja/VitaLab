@@ -352,6 +352,24 @@ exit was detected, the agent stayed reachable, and restricted log/core-dump
 collection completed. The top-level run preserved the matching ELF with SHA-256
 `af94227e05db4af608c498e88061b147fbe973661af6eab90b18bbe118c4c094`.
 
+`host/Invoke-VitaLabCoreSymbolization.ps1` performs deterministic local
+symbolization with the .NET SDK and VitaSDK `addr2line`; it does not require an
+AI service. `host/Test-VitaLabCrashSymbolization.ps1` snapshots the dump list,
+launches an expected-to-crash title, retrieves only newly created dumps, and
+archives the exact target ELF and installable package before symbolizing the
+crash PC. The target package supplied to the test must be the package installed
+on the Vita for that run.
+
+The Vita Yabause title ID is `YABA00001`. A dynarec crash gate therefore uses
+the matching `.elf` and `.vpk` from one build:
+
+```powershell
+.\host\Test-VitaLabCrashSymbolization.ps1 `
+    -TitleId YABA00001 `
+    -TargetElfPath E:\vita-yabause\build-vita\Yabause_Dynarec_Symbolization.elf `
+    -TargetPackagePath E:\vita-yabause\build-vita\Yabause_Dynarec_Symbolization.vpk
+```
+
 The initial Host-to-Agent proof is documented in [docs/phase-1.md](docs/phase-1.md).
 
 ---
