@@ -29,6 +29,19 @@ static class SelfTest
         Arguments parsedArguments = Arguments.Parse(["discover", "--manifest", "manifest.json", "--payload-root", "payload"]);
         Require(parsedArguments.Command == "discover", "command parse");
         Require(parsedArguments.Require("manifest") == "manifest.json", "option parse");
+
+        var progress = new ProgressParser();
+        Require(progress.AddLine("frame=60", DateTimeOffset.UnixEpoch, 1.0) is null, "progress partial");
+        Require(progress.AddLine("out_time_us=1000000", DateTimeOffset.UnixEpoch, 1.1) is null, "progress time partial");
+        ProgressSample? sample = progress.AddLine("progress=continue", DateTimeOffset.UnixEpoch, 1.2);
+        Require(sample?.Frame == 60 && sample.OutTimeUs == 1000000, "progress sample");
+
+        IReadOnlyList<string> recordingArguments = Recording.BuildArguments(
+            "Video Device", "Audio Device",
+            new EncoderSelection("mpeg4", ["-c:v", "mpeg4"], "fallback"),
+            "evidence file.mkv");
+        Require(recordingArguments.Contains("video=Video Device:audio=Audio Device"), "device argument");
+        Require(recordingArguments[^1] == "evidence file.mkv", "output argument");
     }
 
     private static void Require(bool condition, string name)

@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$VideoDevice = 'Game Capture HD60 Pro',
-    [string]$AudioDevice = 'Microphone (Game Capture HD60 Pro)',
+    [string]$AudioDevice = 'Game Capture HD60 Pro Audio',
     [string]$ManifestPath = (Join-Path $PSScriptRoot '..\third_party\ffmpeg\manifest.json'),
     [string]$PayloadRoot = (Join-Path $PSScriptRoot '..\third_party\ffmpeg\payload'),
     [string]$RunRoot = (Join-Path $PSScriptRoot '..\runs')

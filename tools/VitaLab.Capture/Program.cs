@@ -22,7 +22,20 @@ try
         "discover" => await Discovery.RunAsync(
             preflight,
             arguments.Optional("video-device", "Game Capture HD60 Pro"),
-            arguments.Optional("audio-device", "Microphone (Game Capture HD60 Pro)")),
+            arguments.Optional("audio-device", "Game Capture HD60 Pro Audio")),
+        "record" => await Recording.RunAsync(
+            preflight,
+            arguments.Optional("video-device", "Game Capture HD60 Pro"),
+            arguments.Optional("audio-device", "Game Capture HD60 Pro Audio"),
+            arguments.Require("output"),
+            arguments.Require("progress-jsonl"),
+            arguments.Require("log"),
+            arguments.Require("ready-file"),
+            arguments.Optional("encoder", "auto"),
+            arguments.OptionalInt("duration-seconds", 0, 0, 86400),
+            arguments.OptionalInt("ready-timeout-seconds", 15, 1, 300),
+            arguments.OptionalInt("stop-timeout-seconds", 10, 1, 300)),
+        "probe" => await MediaProbe.RunAsync(preflight, arguments.Require("input")),
         _ => throw new ArgumentException($"Unknown command '{arguments.Command}'.")
     };
 
@@ -36,7 +49,7 @@ try
     }
     Console.WriteLine(json);
     _ = manifest;
-    return 0;
+    return output is RecordingResult recording && recording.Result != "PASS" ? 1 : 0;
 }
 catch (Exception exception)
 {

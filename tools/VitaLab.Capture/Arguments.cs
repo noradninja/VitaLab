@@ -40,4 +40,17 @@ sealed class Arguments
 
     public string Optional(string name, string defaultValue) =>
         values.TryGetValue(name, out string? value) ? value : defaultValue;
+
+    public int OptionalInt(string name, int defaultValue, int minimum, int maximum)
+    {
+        if (!values.TryGetValue(name, out string? value))
+        {
+            return defaultValue;
+        }
+        if (!int.TryParse(value, out int parsed) || parsed < minimum || parsed > maximum)
+        {
+            throw new ArgumentException($"Option --{name} must be an integer from {minimum} through {maximum}.");
+        }
+        return parsed;
+    }
 }

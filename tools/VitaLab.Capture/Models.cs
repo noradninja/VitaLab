@@ -66,3 +66,54 @@ sealed record DiscoveryResult(
     string SelectedAudioDevice,
     IReadOnlyList<DeviceOption> VideoOptions,
     IReadOnlyList<DeviceOption> AudioOptions);
+
+sealed record ProgressSample(
+    DateTimeOffset ObservedAtUtc,
+    double HostMonotonicSeconds,
+    long? Frame,
+    long? OutTimeUs,
+    string? OutTime,
+    string Progress,
+    IReadOnlyDictionary<string, string> Values);
+
+sealed record EncoderSelection(string Name, string[] Arguments, string Preflight);
+
+sealed record RecordingResult(
+    int SchemaVersion,
+    string Result,
+    DateTimeOffset StartedAtUtc,
+    DateTimeOffset ReadyAtUtc,
+    DateTimeOffset FinishedAtUtc,
+    string VideoDevice,
+    string AudioDevice,
+    string Encoder,
+    string EncoderPreflight,
+    string Container,
+    string OutputFile,
+    string OutputSha256,
+    long OutputBytes,
+    int ExitCode,
+    bool ForcedTermination,
+    int ProgressSampleCount,
+    IReadOnlyList<string> FfmpegArguments);
+
+sealed record StreamProbe(
+    int Index,
+    string CodecType,
+    string CodecName,
+    int? Width,
+    int? Height,
+    string? PixelFormat,
+    string? FrameRate,
+    int? SampleRate,
+    int? Channels);
+
+sealed record ProbeResult(
+    int SchemaVersion,
+    string Result,
+    string InputFile,
+    string Sha256,
+    long Bytes,
+    double DurationSeconds,
+    IReadOnlyList<StreamProbe> Streams,
+    string DecodeResult);

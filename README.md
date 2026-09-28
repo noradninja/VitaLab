@@ -278,7 +278,7 @@ The same interface could later be consumed by local systems such as Continuity o
 ### Phase 3 - Capture
 
 - [x] Capture-card discovery/control
-- [ ] Automated recording
+- [x] Automated recording
 - [ ] Failure-frame extraction
 - [ ] Timestamp correlation with test telemetry
 
