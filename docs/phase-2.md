@@ -18,9 +18,12 @@ The dump was 126,944 bytes with SHA-256
 `d9ecd291e12b90283ba2a2ba4e913dd983d367610d3219c0b5a9c11245f2742a`.
 Local symbolization identified the crashed thread as `YABA00001`, the stop
 reason as data abort `0x00030004`, PC `0x810a1214` as `ScspExec`, and the fault
-address as `0x18`. Seven additional target-code addresses were identified on
-the crashed thread stack; they are explicitly recorded as heuristic candidates,
-not as a proven unwind.
+address as `0x18`. Disassembly identifies the faulting instruction as
+`ldr r3, [r3, #24]`; the captured register set has `r3 = 0`, directly accounting
+for the access at `0x18`. The `.ARM.exidx` range covering `ScspExec` is marked
+`cantunwind`, so the report explicitly records EHABI unwinding as unavailable
+for this crash. Seven additional target-code addresses are retained as
+heuristic stack candidates, not as a proven unwind.
 
 The target application was built from Yabause Git commit
 `56bf607c18aead9f5227340d6ddd738c418989ad`. The matching archived files were:
@@ -53,10 +56,11 @@ agent's TCP listener.
 
 ## Local symbolization boundaries
 
-The current decoder relocates runtime addresses to the matching target ELF,
-resolves functions and available source locations with VitaSDK `addr2line`, and
-records crash registers plus heuristic target-code addresses found on the
-stack. It does not yet interpret `.ARM.exidx`, `.ARM.extab`, or DWARF call-frame
-information to produce a proven frame-by-frame backtrace. That is a future
-quality improvement rather than a dependency for deterministic address
-symbolization.
+The decoder relocates runtime addresses to the matching target ELF, resolves
+functions and available source locations with VitaSDK `addr2line`, and uses
+VitaSDK `objdump` to highlight the exact crash instruction. It interprets the
+decoded ARM EHABI operations emitted by VitaSDK `readelf --unwind` and records a
+proven frame sequence when the applicable `.ARM.exidx` entry permits unwinding.
+If the table says `cantunwind`, is missing, or contains an unsupported operation,
+the report records that reason and retains heuristic stack candidates as a
+separate fallback rather than presenting them as a backtrace.

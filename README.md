@@ -353,8 +353,11 @@ collection completed. The top-level run preserved the matching ELF with SHA-256
 `af94227e05db4af608c498e88061b147fbe973661af6eab90b18bbe118c4c094`.
 
 `host/Invoke-VitaLabCoreSymbolization.ps1` performs deterministic local
-symbolization with the .NET SDK and VitaSDK `addr2line`; it does not require an
-AI service. `host/Test-VitaLabCrashSymbolization.ps1` snapshots the dump list,
+symbolization with the .NET SDK and VitaSDK `addr2line`, `objdump`, and
+`readelf`; it does not require an AI service. It records highlighted crash-site
+disassembly, performs ARM EHABI unwinding when the applicable `.ARM.exidx`
+entry permits it, and retains clearly labeled heuristic stack candidates as a
+fallback. `host/Test-VitaLabCrashSymbolization.ps1` snapshots the dump list,
 launches an expected-to-crash title, retrieves only newly created dumps, and
 archives the exact target ELF and installable package before symbolizing the
 crash PC. The target package supplied to the test must be the package installed

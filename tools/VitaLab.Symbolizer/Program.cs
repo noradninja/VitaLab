@@ -2,9 +2,17 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 // Vita core-note record layouts are documented by the LGPL-3.0-or-later
 // vita-core-dump project: https://github.com/bgK/vita-core-dump
+
+if (args.Length == 1 && args[0] == "--self-test")
+{
+    RunSelfTest();
+    Console.WriteLine("VitaLab.Symbolizer self-test PASS");
+    return 0;
+}
 
 try
 {
@@ -12,6 +20,8 @@ try
     string dumpPath = RequiredPath(options, "dump");
     string elfPath = RequiredPath(options, "elf");
     string addr2LinePath = RequiredPath(options, "addr2line");
+    string objdumpPath = RequiredPath(options, "objdump");
+    string readElfPath = RequiredPath(options, "readelf");
     string textPath = RequiredOption(options, "text");
     string jsonPath = RequiredOption(options, "json");
     int maxStackWords = options.TryGetValue("max-stack-words", out string? value)
@@ -38,9 +48,11 @@ try
 
     CoreModule targetModule = SelectTargetModule(core.Modules, registers.Pc, targetText, options.GetValueOrDefault("module"));
     CoreSegment targetRuntimeText = SelectRuntimeTextSegment(targetModule, registers.Pc, targetText);
+    RawUnwind rawUnwind = PerformUnwind(core, registers, targetRuntimeText, targetText, elfPath, readElfPath, 64);
     List<uint> rawAddresses = new() { registers.Pc, registers.Lr };
     List<StackCandidate> candidates = ScanStack(core, registers.Sp, targetRuntimeText, maxStackWords);
     rawAddresses.AddRange(candidates.Select(candidate => candidate.Address));
+    rawAddresses.AddRange(rawUnwind.RuntimeAddresses);
 
     Dictionary<uint, SymbolRecord> symbols = SymbolizeAddresses(
         rawAddresses.Distinct(), targetRuntimeText.Start, targetText.VirtualAddress,
@@ -48,10 +60,15 @@ try
 
     AddressRecord pc = CreateAddressRecord(registers.Pc, targetModule, targetRuntimeText, targetText, symbols);
     AddressRecord lr = CreateAddressRecord(registers.Lr, targetModule, targetRuntimeText, targetText, symbols);
+    List<AddressRecord> unwindFrames = rawUnwind.RuntimeAddresses
+        .Select(address => CreateAddressRecord(address, targetModule, targetRuntimeText, targetText, symbols))
+        .ToList();
     List<StackRecord> stack = candidates.Select(candidate => new StackRecord(
         candidate.StackAddress,
         CreateAddressRecord(candidate.Address, targetModule, targetRuntimeText, targetText, symbols)))
         .ToList();
+    DisassemblyRecord disassembly = Disassemble(
+        registers.Pc, targetRuntimeText, targetText, elfPath, objdumpPath, 40);
 
     Analysis analysis = new(
         SchemaVersion: 1,
@@ -62,6 +79,8 @@ try
         TargetModule: new ModuleRecord(targetModule.Name, targetRuntimeText.Start, targetRuntimeText.Size, targetText.VirtualAddress),
         ProgramCounter: pc,
         LinkRegister: lr,
+        Unwind: new UnwindRecord(rawUnwind.Status, rawUnwind.Reason, unwindFrames),
+        Disassembly: disassembly,
         StackCandidates: stack,
         Modules: core.Modules.Select(module => new ModuleSummary(
             module.Name,
@@ -96,6 +115,38 @@ static Dictionary<string, string> ParseOptions(string[] arguments)
         result[current[2..]] = arguments[++index];
     }
     return result;
+}
+
+static void RunSelfTest()
+{
+    byte[] memory = new byte[64];
+    WriteTestWord(memory, 8, 0x44444444);
+    WriteTestWord(memory, 12, 0x55555555);
+    WriteTestWord(memory, 16, 0x81234567);
+    CoreDump core = new()
+    {
+        Data = memory,
+        Loads = new List<ProgramHeader> { new(ElfConstants.PtLoad, 0, 0x1000, (uint)memory.Length, (uint)memory.Length, 0, 4) },
+        Modules = new List<CoreModule>(),
+        Threads = new List<CoreThread>(),
+        Registers = new List<CoreRegisters>()
+    };
+    uint[] registers = new uint[16];
+    registers[13] = 0x1000;
+    List<string> operations = new() { "vsp = vsp + 8", "pop {r4, r5, r14}", "finish" };
+    if (!ApplyUnwindOperations(core, registers, operations, out string? error))
+        throw new InvalidOperationException($"Self-test unwind failed: {error}");
+    if (registers[4] != 0x44444444 || registers[5] != 0x55555555 ||
+        registers[14] != 0x81234567 || registers[15] != 0x81234567 || registers[13] != 0x1014)
+        throw new InvalidOperationException("Self-test unwind produced incorrect ARM register state.");
+}
+
+static void WriteTestWord(byte[] data, int offset, uint value)
+{
+    data[offset] = (byte)value;
+    data[offset + 1] = (byte)(value >> 8);
+    data[offset + 2] = (byte)(value >> 16);
+    data[offset + 3] = (byte)(value >> 24);
 }
 
 static string RequiredOption(Dictionary<string, string> options, string name) =>
@@ -229,6 +280,258 @@ static AddressRecord CreateAddressRecord(
         symbol?.Function, symbol?.Location);
 }
 
+static DisassemblyRecord Disassemble(
+    uint runtimeAddress,
+    CoreSegment runtimeText,
+    ProgramHeader elfText,
+    string elfPath,
+    string objdumpPath,
+    uint radius)
+{
+    uint normalized = runtimeAddress & 0xfffffffeu;
+    if (!runtimeText.Contains(normalized))
+        return new DisassemblyRecord(runtimeAddress, null, new List<string>(), null);
+    uint elfAddress = checked(elfText.VirtualAddress + (normalized - runtimeText.Start));
+    uint startAddress = elfAddress > radius ? elfAddress - radius : 0;
+    uint stopAddress = checked(elfAddress + radius);
+    ProcessStartInfo startInfo = new(objdumpPath)
+    {
+        RedirectStandardOutput = true,
+        RedirectStandardError = true,
+        UseShellExecute = false,
+        CreateNoWindow = true
+    };
+    startInfo.ArgumentList.Add("-d");
+    startInfo.ArgumentList.Add("-C");
+    startInfo.ArgumentList.Add($"--start-address=0x{startAddress:x8}");
+    startInfo.ArgumentList.Add($"--stop-address=0x{stopAddress:x8}");
+    startInfo.ArgumentList.Add(elfPath);
+    using Process process = Process.Start(startInfo) ?? throw new InvalidOperationException("Unable to start objdump.");
+    string output = process.StandardOutput.ReadToEnd();
+    string error = process.StandardError.ReadToEnd();
+    process.WaitForExit();
+    if (process.ExitCode != 0)
+        throw new InvalidOperationException($"objdump failed for 0x{elfAddress:x8}: {error.Trim()}");
+    List<string> lines = output.Replace("\r", string.Empty).Split('\n')
+        .Where(line => Regex.IsMatch(line, @"^\s*[0-9a-fA-F]{8}:"))
+        .Select(line => line.TrimEnd())
+        .ToList();
+    string? faulting = lines.FirstOrDefault(line => Regex.IsMatch(line, $@"^\s*{elfAddress:x8}:"));
+    return new DisassemblyRecord(runtimeAddress, elfAddress, lines, faulting);
+}
+
+static RawUnwind PerformUnwind(
+    CoreDump core,
+    CoreRegisters initial,
+    CoreSegment runtimeText,
+    ProgramHeader elfText,
+    string elfPath,
+    string readElfPath,
+    int maxFrames)
+{
+    List<UnwindEntry> entries = ReadUnwindEntries(elfPath, readElfPath);
+    uint[] registers = (uint[])initial.GeneralPurpose.Clone();
+    List<uint> addresses = new() { initial.Pc & 0xfffffffeu };
+    HashSet<uint> seen = new(addresses);
+    string status = "COMPLETE";
+    string? reason = null;
+
+    for (int frame = 1; frame < maxFrames; frame++)
+    {
+        uint runtimePc = registers[15] & 0xfffffffeu;
+        if (!runtimeText.Contains(runtimePc))
+        {
+            reason = $"PC 0x{runtimePc:x8} left the target module.";
+            break;
+        }
+        uint elfPc = checked(elfText.VirtualAddress + (runtimePc - runtimeText.Start));
+        UnwindEntry? entry = entries.Where(item => item.StartAddress <= elfPc)
+            .OrderByDescending(item => item.StartAddress)
+            .FirstOrDefault();
+        if (entry is null)
+        {
+            status = addresses.Count == 1 ? "UNAVAILABLE" : "PARTIAL";
+            reason = $"No unwind entry covers ELF address 0x{elfPc:x8}.";
+            break;
+        }
+        if (entry.CantUnwind)
+        {
+            status = addresses.Count == 1 ? "UNAVAILABLE" : "PARTIAL";
+            reason = $"The .ARM.exidx entry at 0x{entry.StartAddress:x8} is cantunwind.";
+            break;
+        }
+        if (!ApplyUnwindOperations(core, registers, entry.Operations, out string? applyError))
+        {
+            status = addresses.Count == 1 ? "UNAVAILABLE" : "PARTIAL";
+            reason = $"Unwind entry 0x{entry.StartAddress:x8}: {applyError}";
+            break;
+        }
+        uint caller = registers[15] & 0xfffffffeu;
+        if (caller == 0)
+        {
+            reason = "The unwind reached a null return address.";
+            break;
+        }
+        if (!seen.Add(caller))
+        {
+            status = "PARTIAL";
+            reason = $"The unwind repeated PC 0x{caller:x8}.";
+            break;
+        }
+        addresses.Add(caller);
+    }
+
+    if (addresses.Count >= maxFrames)
+    {
+        status = "PARTIAL";
+        reason = $"The unwind reached the {maxFrames}-frame safety limit.";
+    }
+    return new RawUnwind(status, reason, addresses);
+}
+
+static List<UnwindEntry> ReadUnwindEntries(string elfPath, string readElfPath)
+{
+    ProcessStartInfo startInfo = new(readElfPath)
+    {
+        RedirectStandardOutput = true,
+        RedirectStandardError = true,
+        UseShellExecute = false,
+        CreateNoWindow = true
+    };
+    startInfo.ArgumentList.Add("--unwind");
+    startInfo.ArgumentList.Add(elfPath);
+    using Process process = Process.Start(startInfo) ?? throw new InvalidOperationException("Unable to start readelf.");
+    string output = process.StandardOutput.ReadToEnd();
+    string error = process.StandardError.ReadToEnd();
+    process.WaitForExit();
+    if (process.ExitCode != 0)
+        throw new InvalidOperationException($"readelf --unwind failed: {error.Trim()}");
+
+    List<UnwindEntry> entries = new();
+    UnwindEntry? current = null;
+    foreach (string rawLine in output.Replace("\r", string.Empty).Split('\n'))
+    {
+        Match header = Regex.Match(rawLine, @"^0x([0-9a-fA-F]+) .*:\s*(.*)$");
+        if (header.Success)
+        {
+            current = new UnwindEntry(Convert.ToUInt32(header.Groups[1].Value, 16),
+                header.Groups[2].Value.Contains("[cantunwind]", StringComparison.Ordinal), new List<string>());
+            entries.Add(current);
+            continue;
+        }
+        if (current is null)
+            continue;
+        string line = rawLine.Trim();
+        if (Regex.IsMatch(line, @"^0x[0-9a-fA-F]{2}(\s+0x[0-9a-fA-F]{2})*\s+"))
+        {
+            Match operation = Regex.Match(line, @"^(?:0x[0-9a-fA-F]{2}\s+)+(.+)$");
+            if (operation.Success)
+                current.Operations.Add(operation.Groups[1].Value.Trim());
+        }
+    }
+    return entries;
+}
+
+static bool ApplyUnwindOperations(CoreDump core, uint[] registers, IReadOnlyList<string> operations, out string? error)
+{
+    uint vsp = registers[13];
+    bool pcSet = false;
+    foreach (string operation in operations)
+    {
+        Match adjust = Regex.Match(operation, @"^vsp = vsp ([+-]) (\d+)$");
+        if (adjust.Success)
+        {
+            uint amount = uint.Parse(adjust.Groups[2].Value);
+            vsp = adjust.Groups[1].Value == "+" ? checked(vsp + amount) : checked(vsp - amount);
+            continue;
+        }
+        Match setVsp = Regex.Match(operation, @"^vsp = r(\d+)$");
+        if (setVsp.Success)
+        {
+            int register = int.Parse(setVsp.Groups[1].Value);
+            if (register is < 0 or > 15) { error = $"invalid vsp register in '{operation}'."; return false; }
+            vsp = registers[register];
+            continue;
+        }
+        Match pop = Regex.Match(operation, @"^pop \{([^}]+)\}$");
+        if (pop.Success)
+        {
+            if (!ExpandRegisterList(pop.Groups[1].Value, out List<int> popped, out int nonCoreBytes, out error))
+                return false;
+            foreach (int register in popped.OrderBy(item => item))
+            {
+                if (!core.TryReadUInt32(vsp, out uint value))
+                {
+                    error = $"unable to read unwind word at 0x{vsp:x8}.";
+                    return false;
+                }
+                registers[register] = value;
+                if (register == 15) pcSet = true;
+                vsp = checked(vsp + 4);
+            }
+            vsp = checked(vsp + (uint)nonCoreBytes);
+            continue;
+        }
+        if (operation == "finish")
+        {
+            if (!pcSet)
+                registers[15] = registers[14];
+            registers[13] = vsp;
+            error = null;
+            return true;
+        }
+        error = $"unsupported operation '{operation}'.";
+        return false;
+    }
+    error = "entry ended without a finish operation.";
+    return false;
+}
+
+static bool ExpandRegisterList(string list, out List<int> coreRegisters, out int nonCoreBytes, out string? error)
+{
+    coreRegisters = new List<int>();
+    nonCoreBytes = 0;
+    error = null;
+    foreach (string rawToken in list.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+    {
+        string token = rawToken.Trim();
+        Match coreRange = Regex.Match(token, @"^r(\d+)-r(\d+)$", RegexOptions.IgnoreCase);
+        Match coreSingle = Regex.Match(token, @"^r(\d+)$", RegexOptions.IgnoreCase);
+        Match floatingRange = Regex.Match(token, @"^d(\d+)-d(\d+)$", RegexOptions.IgnoreCase);
+        Match floatingSingle = Regex.Match(token, @"^d(\d+)$", RegexOptions.IgnoreCase);
+        if (coreRange.Success)
+        {
+            int start = int.Parse(coreRange.Groups[1].Value);
+            int end = int.Parse(coreRange.Groups[2].Value);
+            if (start < 0 || end > 15 || start > end) { error = $"invalid register range '{token}'."; return false; }
+            for (int register = start; register <= end; register++) coreRegisters.Add(register);
+        }
+        else if (coreSingle.Success)
+        {
+            int register = int.Parse(coreSingle.Groups[1].Value);
+            if (register is < 0 or > 15) { error = $"invalid register '{token}'."; return false; }
+            coreRegisters.Add(register);
+        }
+        else if (floatingRange.Success)
+        {
+            int start = int.Parse(floatingRange.Groups[1].Value);
+            int end = int.Parse(floatingRange.Groups[2].Value);
+            if (start > end) { error = $"invalid floating-point range '{token}'."; return false; }
+            nonCoreBytes = checked(nonCoreBytes + (end - start + 1) * 8);
+        }
+        else if (floatingSingle.Success)
+        {
+            nonCoreBytes = checked(nonCoreBytes + 8);
+        }
+        else
+        {
+            error = $"unsupported register list token '{token}'.";
+            return false;
+        }
+    }
+    return true;
+}
+
 static string FormatText(Analysis analysis)
 {
     StringBuilder text = new();
@@ -243,9 +546,29 @@ static string FormatText(Analysis analysis)
     text.AppendLine();
     AppendAddress(text, "PC", analysis.ProgramCounter);
     AppendAddress(text, "LR", analysis.LinkRegister);
-    text.AppendLine($"SP: 0x{analysis.Registers.GeneralPurpose[13]:x8}");
+    text.AppendLine("Registers:");
+    for (int register = 0; register < analysis.Registers.GeneralPurpose.Length; register++)
+        text.AppendLine($"  r{register,-2} 0x{analysis.Registers.GeneralPurpose[register]:x8}");
     text.AppendLine($"DFSR/DFAR: 0x{analysis.Registers.Dfsr:x8} / 0x{analysis.Registers.Dfar:x8}");
     text.AppendLine($"IFSR/IFAR: 0x{analysis.Registers.Ifsr:x8} / 0x{analysis.Registers.Ifar:x8}");
+    text.AppendLine();
+    text.AppendLine($"ARM EHABI unwind: {analysis.Unwind.Status}");
+    if (!string.IsNullOrWhiteSpace(analysis.Unwind.Reason))
+        text.AppendLine($"  {analysis.Unwind.Reason}");
+    for (int index = 0; index < analysis.Unwind.Frames.Count; index++)
+    {
+        text.Append($"  #{index} ");
+        AppendAddress(text, null, analysis.Unwind.Frames[index]);
+    }
+    text.AppendLine();
+    text.AppendLine("Disassembly around the crash PC:");
+    if (analysis.Disassembly.Lines.Count == 0)
+        text.AppendLine("  unavailable");
+    foreach (string line in analysis.Disassembly.Lines)
+    {
+        string marker = line == analysis.Disassembly.FaultingLine ? ">>>" : "   ";
+        text.AppendLine($"{marker} {line.TrimStart()}");
+    }
     text.AppendLine();
     text.AppendLine("Heuristic target-code addresses found on the crashed thread stack:");
     if (analysis.StackCandidates.Count == 0)
@@ -256,7 +579,7 @@ static string FormatText(Analysis analysis)
         AppendAddress(text, null, record.Address);
     }
     text.AppendLine();
-    text.AppendLine("Note: stack candidates are not a proven call stack; this symbolizer does not yet perform CFI unwinding.");
+    text.AppendLine("Note: heuristic stack candidates are not a proven call stack and are kept as a fallback when EHABI unwinding is unavailable or partial.");
     return text.ToString();
 }
 
@@ -501,11 +824,15 @@ sealed record CoreRegisters(uint ThreadId, uint[] GeneralPurpose, uint Ifsr, uin
 }
 sealed record StackCandidate(uint StackAddress, uint Address);
 sealed record SymbolRecord(uint ElfAddress, string Function, string Location);
+sealed record UnwindEntry(uint StartAddress, bool CantUnwind, List<string> Operations);
+sealed record RawUnwind(string Status, string? Reason, List<uint> RuntimeAddresses);
 sealed record ThreadRecord(uint Uid, string Name, ushort Status, uint StopReason);
 sealed record RegisterRecord(uint[] GeneralPurpose, uint Ifsr, uint Ifar, uint Dfsr, uint Dfar);
 sealed record ModuleRecord(string Name, uint RuntimeTextBase, uint RuntimeTextSize, uint ElfTextBase);
 sealed record AddressRecord(uint RuntimeAddress, string? Module, uint? ModuleOffset, uint? ElfAddress, string? Function, string? Location);
 sealed record StackRecord(uint StackAddress, AddressRecord Address);
+sealed record UnwindRecord(string Status, string? Reason, List<AddressRecord> Frames);
+sealed record DisassemblyRecord(uint RuntimeAddress, uint? ElfAddress, List<string> Lines, string? FaultingLine);
 sealed record SegmentSummary(uint Attributes, uint Start, uint Size);
 sealed record ModuleSummary(string Name, List<SegmentSummary> Segments);
 sealed record Analysis(
@@ -517,6 +844,8 @@ sealed record Analysis(
     ModuleRecord TargetModule,
     AddressRecord ProgramCounter,
     AddressRecord LinkRegister,
+    UnwindRecord Unwind,
+    DisassemblyRecord Disassembly,
     List<StackRecord> StackCandidates,
     List<ModuleSummary> Modules);
 

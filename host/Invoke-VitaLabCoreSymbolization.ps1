@@ -16,8 +16,12 @@ $resolvedDump = (Resolve-Path -LiteralPath $DumpPath).Path
 $resolvedElf = (Resolve-Path -LiteralPath $TargetElfPath).Path
 $resolvedVitaSdk = (Resolve-Path -LiteralPath $VitaSdkPath).Path
 $addr2Line = Join-Path $resolvedVitaSdk 'bin\arm-vita-eabi-addr2line.exe'
-if (-not (Test-Path -LiteralPath $addr2Line -PathType Leaf)) {
-    throw "VitaSDK addr2line was not found at $addr2Line."
+$objdump = Join-Path $resolvedVitaSdk 'bin\arm-vita-eabi-objdump.exe'
+$readElf = Join-Path $resolvedVitaSdk 'bin\arm-vita-eabi-readelf.exe'
+foreach ($tool in @($addr2Line, $objdump, $readElf)) {
+    if (-not (Test-Path -LiteralPath $tool -PathType Leaf)) {
+        throw "Required VitaSDK tool was not found at $tool."
+    }
 }
 
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
@@ -34,6 +38,8 @@ $arguments = @(
     '--dump', $resolvedDump,
     '--elf', $resolvedElf,
     '--addr2line', $addr2Line,
+    '--objdump', $objdump,
+    '--readelf', $readElf,
     '--text', $textPath,
     '--json', $jsonPath,
     '--max-stack-words', $MaxStackWords
@@ -59,6 +65,9 @@ $analysis = Get-Content -Raw -LiteralPath $jsonPath | ConvertFrom-Json
     ProgramCounter = ('0x{0:x8}' -f [uint32]$analysis.ProgramCounter.RuntimeAddress)
     Function = $analysis.ProgramCounter.Function
     Location = $analysis.ProgramCounter.Location
+    UnwindStatus = $analysis.Unwind.Status
+    UnwindFrames = $analysis.Unwind.Frames.Count
+    FaultingInstruction = $analysis.Disassembly.FaultingLine
     StackCandidates = $analysis.StackCandidates.Count
     TextPath = (Resolve-Path -LiteralPath $textPath).Path
     JsonPath = (Resolve-Path -LiteralPath $jsonPath).Path

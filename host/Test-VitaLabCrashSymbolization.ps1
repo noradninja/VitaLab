@@ -226,6 +226,9 @@ try {
     if (-not ($symbolizations | Where-Object { $_.Function -and $_.Function -ne '??' })) {
         throw 'The new dump did not resolve its crash PC to a target-ELF function.'
     }
+    if (-not ($symbolizations | Where-Object { $_.FaultingInstruction })) {
+        throw 'The new dump did not produce disassembly for its crash PC.'
+    }
     if (-not $SkipCrashDialogConfirmation) {
         Read-Host 'The new dump is archived. Clear the Vita crash dialog, wait for LiveArea, then press Enter' | Out-Null
         $crashDialogConfirmedAt = [DateTime]::UtcNow
