@@ -268,12 +268,12 @@ The same interface could later be consumed by local systems such as Continuity o
 
 ### Phase 2 - Reproducible hardware runs
 
-- [ ] Build/run manifests
-- [ ] Git commit/build identity tracking
-- [ ] Preserve matching debug ELF
+- [x] Build/run manifests
+- [x] Git commit/build identity tracking
+- [x] Preserve matching debug ELF
 - [ ] Automatic core dump symbolization
-- [ ] Structured result format
-- [ ] Run artifact archive
+- [x] Structured result format
+- [x] Run artifact archive
 
 ### Phase 3 - Capture
 
@@ -345,6 +345,12 @@ was downloaded and hashed while arbitrary artifact paths were rejected.
 lifecycle gate, and artifact collection into one top-level hardware run. It
 attempts artifact collection even when an earlier component fails and records
 component evidence in one manifest.
+
+Build `6e85d3f7360e-20260928T112757Z` passed the combined hardware workflow for
+TFoUAD `WSCG00005`: the title progressed from stopped to running, a natural
+exit was detected, the agent stayed reachable, and restricted log/core-dump
+collection completed. The top-level run preserved the matching ELF with SHA-256
+`af94227e05db4af608c498e88061b147fbe973661af6eab90b18bbe118c4c094`.
 
 The initial Host-to-Agent proof is documented in [docs/phase-1.md](docs/phase-1.md).
 

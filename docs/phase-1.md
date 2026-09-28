@@ -290,4 +290,14 @@ workflow. Artifact collection is attempted even if the baseline or lifecycle
 component fails. A top-level manifest records the host revision, agent identity,
 exact ELF, component results, component run directories, and final PASS/FAIL.
 
-Hardware validation of the combined workflow remains pending.
+The combined workflow passed on hardware against TFoUAD `WSCG00005` on
+2026-09-28. The title began `STOPPED`, changed to `RUNNING` in 1.023 seconds,
+and returned to `STOPPED` after a visible natural exit in 24.334 seconds. The
+agent identity remained unchanged and restricted artifact retrieval archived
+the agent log, enumerated 23 eligible core dumps, and downloaded one dump.
+
+Evidence is under
+`runs/20260928T113307901Z-orchestrated-6e85d3f7360e-20260928T112757Z`.
+The resident build was `6e85d3f7360e-20260928T112757Z` and the archived ELF
+SHA-256 was
+`af94227e05db4af608c498e88061b147fbe973661af6eab90b18bbe118c4c094`.
