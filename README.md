@@ -264,7 +264,7 @@ The same interface could later be consumed by local systems such as Continuity o
 - [x] Upload/download files
 - [x] Launch and terminate a test application
 - [x] Detect application termination
-- [ ] Retrieve logs and core dumps
+- [x] Retrieve logs and core dumps
 
 ### Phase 2 - Reproducible hardware runs
 
@@ -337,8 +337,9 @@ Build `4a8feadb464c-20260928T021934Z` passed the safe file-transfer gate under
 `ux0:data/vitalab/files/`: traversal, absolute paths, and oversized uploads were
 rejected, and a 64 KiB upload/download round trip preserved its SHA-256 hash.
 
-The next hardware gate restricts artifact access to the VitaLab agent log and
-`psp2core-*.psp2dmp` files in `ux0:data/`, with host-side archival and hashing.
+Build `6e85d3f7360e-20260928T112757Z` passed restricted artifact retrieval: the
+agent log was archived, 23 eligible core dumps were discovered, and one dump
+was downloaded and hashed while arbitrary artifact paths were rejected.
 
 The initial Host-to-Agent proof is documented in [docs/phase-1.md](docs/phase-1.md).
 

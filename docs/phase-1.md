@@ -267,4 +267,17 @@ supply directories or arbitrary device paths.
 `host/Test-VitaLabArtifactRetrieval.ps1` verifies path rejection, retrieves and
 hashes the agent log, lists eligible dumps, optionally requires and retrieves
 one dump, rechecks agent identity, and archives the evidence with the exact ELF.
-Hardware validation remains pending.
+
+On 2026-09-28, build `6e85d3f7360e-20260928T112757Z` passed this gate. Invalid
+log and dump paths were rejected, the 4,668-byte agent log was retrieved with
+SHA-256
+`83e9c2514e013fe8837eb7c8152fa044d51dcccff058973a8fae2985d6244de5`,
+and 23 eligible core dumps were discovered. The gate retrieved
+`psp2core-1789329233-0x0039cf2747-eboot.bin.psp2dmp` (72,272 bytes) with
+SHA-256
+`c62f5dbc472793f4289d9d66832410c6863f1e638ec2e588bc46cfe848e29e1b`.
+Evidence is under
+`runs/20260928T112923388Z-artifact-retrieval-6e85d3f7360e-20260928T112757Z/`.
+
+The archived ELF SHA-256 was
+`af94227e05db4af608c498e88061b147fbe973661af6eab90b18bbe118c4c094`.
