@@ -281,3 +281,13 @@ Evidence is under
 
 The archived ELF SHA-256 was
 `af94227e05db4af608c498e88061b147fbe973661af6eab90b18bbe118c4c094`.
+
+## Orchestrated hardware run
+
+`host/Invoke-VitaLabRun.ps1 -TitleId <TITLEID>` runs the matching-ELF baseline,
+application lifecycle supervision, and restricted artifact retrieval as one
+workflow. Artifact collection is attempted even if the baseline or lifecycle
+component fails. A top-level manifest records the host revision, agent identity,
+exact ELF, component results, component run directories, and final PASS/FAIL.
+
+Hardware validation of the combined workflow remains pending.

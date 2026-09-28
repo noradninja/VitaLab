@@ -341,6 +341,11 @@ Build `6e85d3f7360e-20260928T112757Z` passed restricted artifact retrieval: the
 agent log was archived, 23 eligible core dumps were discovered, and one dump
 was downloaded and hashed while arbitrary artifact paths were rejected.
 
+`host/Invoke-VitaLabRun.ps1` combines the agent identity check, application
+lifecycle gate, and artifact collection into one top-level hardware run. It
+attempts artifact collection even when an earlier component fails and records
+component evidence in one manifest.
+
 The initial Host-to-Agent proof is documented in [docs/phase-1.md](docs/phase-1.md).
 
 ---
