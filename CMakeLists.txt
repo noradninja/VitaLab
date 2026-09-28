@@ -38,6 +38,7 @@ target_compile_definitions(vitalab_protocol PUBLIC
 add_executable(vitalab
   plugin/main.c
   plugin/commands.c
+  plugin/files.c
 )
 target_compile_options(vitalab PRIVATE
   -Wall

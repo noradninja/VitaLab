@@ -312,8 +312,8 @@ The same interface could later be consumed by local systems such as Continuity o
 ## Status
 
 The current milestone is a SceShell user plugin providing versioned `HELLO`,
-`PING`, `INFO`, `LAUNCH`, `STOP`, and application `STATUS` commands over TCP.
-File transfer remains future work. A foreground loader VPK is used as a safety
+`PING`, `INFO`, `LAUNCH`, `STOP`, application `STATUS`, and bounded `PUT`/`GET`
+commands over TCP. A foreground loader VPK is used as a safety
 gate before enabling the plugin under taiHEN's `*main` section. Build
 `2723eda75cab-20260927T200210Z` has passed both the foreground-loader and
 boot-loaded SceShell tests on a real PlayStation TV. The same resident plugin
@@ -332,6 +332,9 @@ Build `9f65e6e8d0bf-20260928T021159Z` passed title lifecycle observation against
 TFoUAD: stopped before launch, running after launch, and stopped after a normal
 on-device exit. Waiting and timeouts remain host-side so the agent listener
 never blocks on application termination.
+
+The next hardware gate verifies safe file-transfer round trips under
+`ux0:data/vitalab/files/`, including traversal rejection and SHA-256 integrity.
 
 The initial Host-to-Agent proof is documented in [docs/phase-1.md](docs/phase-1.md).
 

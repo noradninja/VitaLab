@@ -229,3 +229,17 @@ under
 
 The archived ELF SHA-256 was
 `0273e2cada03510ff40380e88a5990ea81f598e5c37eb8b99c17f1963bacdeb5`.
+
+## File-transfer gate
+
+`PUT <relative-path> <size>` and `GET <relative-path>` stream files beneath
+`ux0:data/vitalab/files/`. Relative paths are limited to ASCII letters, digits,
+periods, underscores, hyphens, and forward-slash separators; absolute paths,
+empty segments, `.` and `..` segments, and files larger than 256 MiB are
+rejected. Uploads are written to a `.part` file, synchronized, and renamed only
+after the declared byte count arrives.
+
+`host/Test-VitaLabFileTransfer.ps1` checks invalid paths and the size bound,
+uploads a 64 KiB random payload to a unique path, downloads it, compares the
+source and downloaded SHA-256 hashes, rechecks agent identity, and archives both
+payloads with the exact agent ELF. Hardware validation remains pending.
